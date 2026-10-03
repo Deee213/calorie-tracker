@@ -1,4 +1,5 @@
 from datetime import datetime
+import hashlib
 import json
 import os
 import time
@@ -35,7 +36,6 @@ st.markdown("""
         max-width: 480px !important;
     }
 
-    /* Main Summary Card Wrapper */
     .warm-card {
         background-color: #ffffff;
         border-radius: 24px;
@@ -163,46 +163,18 @@ st.markdown("""
     button[data-baseweb="tab"] p {
         color: #44403c !important;
         font-weight: 700 !important;
-        font-size: 0.9rem !important;
+        font-size: 0.82rem !important;
     }
 
     button[data-baseweb="tab"][aria-selected="true"] p {
         color: #f97316 !important;
     }
 
-    textarea, input[type="text"] {
+    textarea, input[type="text"], input[type="password"], input[type="number"], select {
         background-color: #ffffff !important;
         color: #1c1917 !important;
         border: 1px solid #e7e5e4 !important;
         border-radius: 12px !important;
-    }
-
-    textarea::placeholder, input::placeholder {
-        color: #a8a29e !important;
-    }
-
-    [data-testid="stFileUploader"] {
-        background-color: #ffffff !important;
-        border: 1px dashed #e7e5e4 !important;
-        border-radius: 16px !important;
-        padding: 12px !important;
-    }
-
-    [data-testid="stFileUploader"] section {
-        background-color: #ffffff !important;
-    }
-
-    [data-testid="stFileUploader"] small, 
-    [data-testid="stFileUploader"] span, 
-    [data-testid="stFileUploader"] div {
-        color: #78716c !important;
-    }
-
-    [data-testid="stFileUploader"] button {
-        background-color: #f3f0e6 !important;
-        border: 1px solid #e7e5e4 !important;
-        color: #1c1917 !important;
-        border-radius: 10px !important;
     }
 
     header[data-testid="stHeader"] {
@@ -213,58 +185,153 @@ st.markdown("""
 
 # --- API KEY INITIALIZATION ---
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
-
 if not api_key:
     st.error("⚠️ GEMINI_API_KEY is missing!")
-    st.info("Please set GEMINI_API_KEY in Streamlit Cloud Secrets or set it in environment variables.")
     st.stop()
+client = genai.Client(api_key=api_key.strip())
 
-api_key = api_key.strip()
-client = genai.Client(api_key=api_key)
+# --- MULTI-USER STORAGE HELPERS ---
+USERS_FILE = "users_data.json"
 
-# --- LOCAL FILE PERSISTENCE HELPERS ---
-HISTORY_FILE = "history.json"
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
-def load_history():
-    if os.path.exists(HISTORY_FILE):
+def load_all_users():
+    if os.path.exists(USERS_FILE):
         try:
-            with open(HISTORY_FILE, "r") as f:
+            with open(USERS_FILE, "r") as f:
                 return json.load(f)
         except Exception:
             return {}
     return {}
 
-def save_history(history_data):
+def save_all_users(users_data):
     try:
-        with open(HISTORY_FILE, "w") as f:
-            json.dump(history_data, f, indent=4)
+        with open(USERS_FILE, "w") as f:
+            json.dump(users_data, f, indent=4)
     except Exception as e:
-        st.error(f"Failed to save history: {e}")
+        st.error(f"Failed to save user database: {e}")
 
-# --- SESSION STATE & TARGETS ---
+# --- SESSION STATE INITIALIZATION FOR AUTH ---
+if "user" not in st.session_state:
+    st.session_state.user = None
+
+all_users = load_all_users()
+
+# --- AUTHENTICATION SCREEN ---
+if not st.session_state.user:
+    st.markdown("<h2 style='text-align: center; color: #1c1917; margin-bottom: 20px;'>🥗 Daily Macro Tracker</h2>", unsafe_allow_html=True)
+    
+    tab_login, tab_register = st.tabs(["🔑 Login", "📝 Register"])
+
+    with tab_login:
+        with st.form("login_form"):
+            username_input = st.text_input("Username")
+            password_input = st.text_input("Password", type="password")
+            submit_login = st.form_submit_button("Login", use_container_width=True)
+            
+            if submit_login:
+                if username_input in all_users and all_users[username_input]["password"] == hash_password(password_input):
+                    st.session_state.user = username_input
+                    st.success("Logged in successfully!")
+                    st.rerun()
+                else:
+                    st.error("Invalid username or password.")
+
+    with tab_register:
+        with st.form("register_form"):
+            new_user = st.text_input("Choose Username")
+            new_pass = st.text_input("Choose Password", type="password")
+            submit_reg = st.form_submit_button("Create Account", use_container_width=True)
+            
+            if submit_reg:
+                if not new_user or not new_pass:
+                    st.warning("Please fill in both fields.")
+                elif new_user in all_users:
+                    st.error("Username already taken. Please choose another.")
+                else:
+                    # Create new user record with default profile & empty history
+                    all_users[new_user] = {
+                        "password": hash_password(new_pass),
+                        "profile": {
+                            "age": 25,
+                            "gender": "Male",
+                            "height": 175,
+                            "weight": 75,
+                            "target_weight": 68,
+                            "activity": "Moderate (3-5 days/week)",
+                            "pace": "Normal (~2 kg / month)"
+                        },
+                        "history": {}
+                    }
+                    save_all_users(all_users)
+                    st.session_state.user = new_user
+                    st.success("Account created successfully!")
+                    st.rerun()
+    st.stop()
+
+# --- LOGGED IN USER DATA SCOPING ---
+current_user = st.session_state.user
+user_data = all_users[current_user]
+
+p = user_data.get("profile", {
+    "age": 25, "gender": "Male", "height": 175, "weight": 75,
+    "target_weight": 68, "activity": "Moderate (3-5 days/week)", "pace": "Normal (~2 kg / month)"
+})
+history = user_data.get("history", {})
+
+today_str = datetime.now().strftime("%Y-%m-%d")
+if today_str not in history:
+    history[today_str] = []
+
+# Sidebar logout control
+with st.sidebar:
+    st.write(f"Logged in as: **{current_user}**")
+    if st.button("🚪 Logout", use_container_width=True):
+        st.session_state.user = None
+        st.rerun()
+
+# --- CALCULATE TARGETS BASED ON PROFILE ---
+if p["gender"] == "Male":
+    bmr = (10 * p["weight"]) + (6.25 * p["height"]) - (5 * p["age"]) + 5
+else:
+    bmr = (10 * p["weight"]) + (6.25 * p["height"]) - (5 * p["age"]) - 161
+
+activity_multipliers = {
+    "Sedentary (little or no exercise)": 1.2,
+    "Light (1-3 days/week)": 1.375,
+    "Moderate (3-5 days/week)": 1.55,
+    "Active (6-7 days/week)": 1.725
+}
+tdee = bmr * activity_multipliers.get(p["activity"], 1.55)
+
+pace_deficits = {
+    "Normal (~2 kg / month)": 500,
+    "Aggressive (~3.5 kg / month)": 750,
+    "⚡ Rush / Fast (~4.5+ kg / month)": 1000
+}
+daily_deficit = pace_deficits.get(p["pace"], 500)
+target_calories = max(1200, int(tdee - daily_deficit))
+
+target_protein = int((target_calories * 0.30) / 4)
+target_carbs = int((target_calories * 0.40) / 4)
+target_fat = int((target_calories * 0.30) / 9)
+
 TARGETS = {
-    "calories": 2500,
-    "protein": 66,
-    "carbs": 136,
-    "fat": 77
+    "calories": target_calories,
+    "protein": target_protein,
+    "carbs": target_carbs,
+    "fat": target_fat
 }
 
-today_dt = datetime.now()
-today_str = today_dt.strftime("%Y-%m-%d")
+monthly_loss_kg = round((daily_deficit * 30) / 7700, 1)
 
-if "history" not in st.session_state:
-    st.session_state.history = load_history()
-
-if today_str not in st.session_state.history:
-    st.session_state.history[today_str] = []
-
-today_meals = st.session_state.history[today_str]
-
+# --- TODAY'S METRICS ---
+today_meals = history[today_str]
 total_calories = sum(m.get("calories", 0) for m in today_meals)
 total_protein = sum(m.get("protein", 0) for m in today_meals)
 total_carbs = sum(m.get("carbs", 0) for m in today_meals)
 total_fat = sum(m.get("fat", 0) for m in today_meals)
-
 remaining_calories = max(0, TARGETS["calories"] - total_calories)
 
 fat_pct = min(100, int((total_fat / TARGETS["fat"]) * 100)) if TARGETS["fat"] else 0
@@ -274,7 +341,6 @@ carb_pct = min(100, int((total_carbs / TARGETS["carbs"]) * 100)) if TARGETS["car
 fat_angle = fat_pct * 3.6
 prot_angle = fat_angle + (prot_pct * 3.6)
 carb_angle = min(360, prot_angle + (carb_pct * 3.6))
-
 conic_bg = f"conic-gradient(#3b82f6 0deg {fat_angle}deg, #eab308 {fat_angle}deg {prot_angle}deg, #22c55e {prot_angle}deg {carb_angle}deg, #f3f0e6 {carb_angle}deg 360deg)"
 
 # --- MAIN NUTRITION SUMMARY CARD ---
@@ -284,7 +350,7 @@ st.markdown(f"""
             <span style="font-size: 1.2rem;">⚡</span>
             <div>
                 <div class="goal-title">Calorie Goal: {TARGETS['calories']:,} kcal</div>
-                <div class="goal-sub">Remaining only {remaining_calories:,} kcal</div>
+                <div class="goal-sub">Remaining only {remaining_calories:,} kcal • Est. Loss: <b>~{monthly_loss_kg} kg/mo</b></div>
             </div>
         </div>
         <div class="donut-container">
@@ -314,15 +380,62 @@ st.markdown(f"""
             </div>
         </div>
         <div class="motivation-pill">
-            ✨ You are doing great!
+            ✨ Welcome back, {current_user}! Mode: {p['pace'].split(' ')[0]}
         </div>
     </div>
 """, unsafe_allow_html=True)
 
 # --- NAVIGATION TABS ---
-nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📸 Log Meal", "📋 Today's Meals", "📅 History"])
+nav_tab1, nav_tab2, nav_tab3, nav_tab4 = st.tabs(["👤 Profile", "📸 Log Meal", "📋 Today", "📅 History"])
 
 with nav_tab1:
+    st.markdown("### Your Personal Details")
+    st.caption("Update your body metrics below. Targets and monthly weight loss estimates will adjust automatically.")
+    
+    with st.form("profile_form"):
+        col1, col2 = st.columns(2)
+        with col1:
+            age = st.number_input("Age", min_value=10, max_value=100, value=int(p["age"]))
+            height = st.number_input("Height (cm)", min_value=100, max_value=250, value=int(p["height"]))
+            weight = st.number_input("Current Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["weight"]))
+        with col2:
+            gender = st.selectbox("Gender", ["Male", "Female"], index=0 if p["gender"]=="Male" else 1)
+            target_weight = st.number_input("Target Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["target_weight"]))
+            activity_options = [
+                "Sedentary (little or no exercise)",
+                "Light (1-3 days/week)",
+                "Moderate (3-5 days/week)",
+                "Active (6-7 days/week)"
+            ]
+            current_act_index = activity_options.index(p["activity"]) if p["activity"] in activity_options else 2
+            activity = st.selectbox("Activity Level", activity_options, index=current_act_index)
+
+        st.markdown("---")
+        st.markdown("### Weight Loss Speed & Rush Mode")
+        pace_options = [
+            "Normal (~2 kg / month)", 
+            "Aggressive (~3.5 kg / month)", 
+            "⚡ Rush / Fast (~4.5+ kg / month)"
+        ]
+        current_pace_index = pace_options.index(p["pace"]) if p["pace"] in pace_options else 0
+        pace = st.selectbox("Select Weight Loss Pace", pace_options, index=current_pace_index)
+
+        submitted = st.form_submit_button("💾 Save Profile & Recalculate", use_container_width=True)
+        if submitted:
+            all_users[current_user]["profile"] = {
+                "age": age,
+                "gender": gender,
+                "height": height,
+                "weight": weight,
+                "target_weight": target_weight,
+                "activity": activity,
+                "pace": pace
+            }
+            save_all_users(all_users)
+            st.success("Profile updated successfully!")
+            st.rerun()
+
+with nav_tab2:
     method = st.radio("Input Method", ["Text Description", "Camera / Upload"], horizontal=True, label_visibility="collapsed")
     
     meal_image = None
@@ -358,7 +471,7 @@ with nav_tab1:
         if text:
             contents.append(f"Description: {text}")
 
-        models_to_try = ["gemini-3.8-flash", "gemini-3.5-flash"]
+        models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash"]
         for model_name in models_to_try:
             try:
                 response = client.models.generate_content(model=model_name, contents=contents)
@@ -379,14 +492,14 @@ with nav_tab1:
                     data = json.loads(clean_json)
                     data["time"] = datetime.now().strftime("%I:%M %p")
 
-                    st.session_state.history[today_str].append(data)
-                    save_history(st.session_state.history)
+                    all_users[current_user]["history"][today_str].append(data)
+                    save_all_users(all_users)
                     st.success(f"Logged: {data.get('meal_name', 'Meal')} ({data.get('calories', 0)} kcal)")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-with nav_tab2:
+with nav_tab3:
     if not today_meals:
         st.info("No meals logged today yet.")
     else:
@@ -404,16 +517,16 @@ with nav_tab2:
                     )
                 with col_del:
                     if st.button("🗑️", key=f"del_{real_idx}"):
-                        st.session_state.history[today_str].pop(real_idx)
-                        save_history(st.session_state.history)
+                        all_users[current_user]["history"][today_str].pop(real_idx)
+                        save_all_users(all_users)
                         st.rerun()
 
-with nav_tab3:
-    if not st.session_state.history:
+with nav_tab4:
+    if not history:
         st.info("No historical logs available.")
     else:
-        for date_key in sorted(st.session_state.history.keys(), reverse=True):
-            day_meals = st.session_state.history[date_key]
+        for date_key in sorted(history.keys(), reverse=True):
+            day_meals = history[date_key]
             day_calories = sum(m.get("calories", 0) for m in day_meals)
             
             try:
