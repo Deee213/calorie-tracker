@@ -14,12 +14,13 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- WARM CREAM AESTHETIC STYLING ---
+# --- WARM CREAM AESTHETIC STYLING (FORCED LIGHT MODE) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-    html, body, [class*="css"], div, span, p, label {
+    /* Force global light theme override to prevent dark mode invisibility */
+    html, body, [class*="css"], div, span, p, label, h1, h2, h3, h4, h5, h6 {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
         color: #1c1917 !important;
     }
@@ -170,11 +171,16 @@ st.markdown("""
         color: #f97316 !important;
     }
 
-    textarea, input[type="text"], input[type="password"], input[type="number"], select {
+    /* Input styling fixes for clean contrast */
+    input, textarea, select {
         background-color: #ffffff !important;
         color: #1c1917 !important;
         border: 1px solid #e7e5e4 !important;
         border-radius: 12px !important;
+    }
+    
+    input::placeholder, textarea::placeholder {
+        color: #a8a29e !important;
     }
 
     header[data-testid="stHeader"] {
@@ -227,7 +233,7 @@ if not st.session_state.user:
     with tab_login:
         with st.form("login_form"):
             username_input = st.text_input("Username")
-            password_input = st.text_input("Password", type="password")
+            password_input = st.text_input("Password", type="password", help="Click the eye icon on the right to toggle password visibility")
             submit_login = st.form_submit_button("Login", use_container_width=True)
             
             if submit_login:
@@ -241,7 +247,7 @@ if not st.session_state.user:
     with tab_register:
         with st.form("register_form"):
             new_user = st.text_input("Choose Username")
-            new_pass = st.text_input("Choose Password", type="password")
+            new_pass = st.text_input("Choose Password", type="password", help="Click the eye icon on the right to toggle password visibility")
             submit_reg = st.form_submit_button("Create Account", use_container_width=True)
             
             if submit_reg:
@@ -250,7 +256,6 @@ if not st.session_state.user:
                 elif new_user in all_users:
                     st.error("Username already taken. Please choose another.")
                 else:
-                    # Create new user record with default profile & empty history
                     all_users[new_user] = {
                         "password": hash_password(new_pass),
                         "profile": {
@@ -284,7 +289,6 @@ today_str = datetime.now().strftime("%Y-%m-%d")
 if today_str not in history:
     history[today_str] = []
 
-# Sidebar logout control
 with st.sidebar:
     st.write(f"Logged in as: **{current_user}**")
     if st.button("🚪 Logout", use_container_width=True):
