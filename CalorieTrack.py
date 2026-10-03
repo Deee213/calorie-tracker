@@ -12,7 +12,6 @@ st.set_page_config(
 )
 
 # --- API KEY INITIALIZATION ---
-# Checks Streamlit Cloud Secrets first, then falls back to local environment variables
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
@@ -20,14 +19,11 @@ if not api_key:
     st.info("Please set GEMINI_API_KEY in Streamlit Cloud Secrets or set it in environment variables.")
     st.stop()
 
-# Ensure GEMINI_API_KEY environment variable is set for the google-genai SDK
-os.environ["GEMINI_API_KEY"] = api_key.strip()
-
-# Initialize Gemini Client automatically using environment variable
-client = genai.Client()
+# Clean key and initialize Gemini Client explicitly with api_key
+api_key = api_key.strip()
+client = genai.Client(api_key=api_key)
 
 # --- SESSION STATE (DAILY MACROS) ---
-# Default targets: 1,650 kcal, 110g Protein, 190g Carbs, 50g Fat
 if "logged_meals" not in st.session_state:
     st.session_state.logged_meals = []
 
@@ -41,7 +37,6 @@ TARGETS = {
 # --- HEADER & PROGRESS ---
 st.title("🥗 Daily Macro Tracker")
 
-# Calculate current totals
 total_calories = sum(m.get("calories", 0) for m in st.session_state.logged_meals)
 total_protein = sum(m.get("protein", 0) for m in st.session_state.logged_meals)
 total_carbs = sum(m.get("carbs", 0) for m in st.session_state.logged_meals)
@@ -107,7 +102,6 @@ if st.button("Analyze & Log Meal", type="primary"):
             try:
                 result_text = analyze_meal(image=meal_image, text=text_description)
                 
-                # Clean up response string if markdown formatting is included
                 clean_json = result_text.strip().replace("```json", "").replace("```", "")
                 data = json.loads(clean_json)
 
