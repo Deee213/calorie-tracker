@@ -287,56 +287,66 @@ today_str = datetime.now().strftime("%Y-%m-%d")
 if today_str not in history:
     history[today_str] = []
 
-# --- SIDEBAR: PROFILE & LOGOUT ---
+# --- SIDEBAR: COMPRESSED PROFILE & LOGOUT ---
 with st.sidebar:
     st.markdown(f"### 👤 {current_user}")
-    st.caption("Update your body metrics below. Targets and monthly weight loss estimates will adjust automatically.")
     
-    with st.form("profile_form"):
-        age = st.number_input("Age", min_value=10, max_value=100, value=int(p["age"]))
-        gender = st.selectbox("Gender", ["Male", "Female"], index=0 if p["gender"]=="Male" else 1)
-        height = st.number_input("Height (cm)", min_value=100, max_value=250, value=int(p["height"]))
-        weight = st.number_input("Current Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["weight"]))
-        target_weight = st.number_input("Target Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["target_weight"]))
+    with st.expander("⚙️ Profile & Body Metrics", expanded=False):
+        st.caption("Update your body metrics below. Targets and monthly weight loss estimates will adjust automatically.")
         
-        activity_options = [
-            "Sedentary (little or no exercise)",
-            "Light (1-3 days/week)",
-            "Moderate (3-5 days/week)",
-            "Active (6-7 days/week)"
-        ]
-        current_act_index = activity_options.index(p["activity"]) if p["activity"] in activity_options else 2
-        activity = st.selectbox("Activity Level", activity_options, index=current_act_index)
+        with st.form("profile_form"):
+            age = st.number_input("Age", min_value=10, max_value=100, value=int(p["age"]))
+            gender = st.selectbox("Gender", ["Male", "Female"], index=0 if p["gender"]=="Male" else 1)
+            height = st.number_input("Height (cm)", min_value=100, max_value=250, value=int(p["height"]))
+            weight = st.number_input("Current Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["weight"]))
+            target_weight = st.number_input("Target Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["target_weight"]))
+            
+            activity_options = [
+                "Sedentary (little or no exercise)",
+                "Light (1-3 days/week)",
+                "Moderate (3-5 days/week)",
+                "Active (6-7 days/week)"
+            ]
+            current_act_index = activity_options.index(p["activity"]) if p["activity"] in activity_options else 2
+            activity = st.selectbox("Activity Level", activity_options, index=current_act_index)
 
-        st.markdown("---")
-        st.markdown("##### Weight Loss Pace")
-        pace_options = [
-            "Normal (~2 kg / month)", 
-            "Aggressive (~3.5 kg / month)", 
-            "⚡ Rush / Fast (~4.5+ kg / month)"
-        ]
-        current_pace_index = pace_options.index(p["pace"]) if p["pace"] in pace_options else 0
-        pace = st.selectbox("Select Pace", pace_options, index=current_pace_index, label_visibility="collapsed")
+            st.markdown("---")
+            st.markdown("##### Weight Loss Pace")
+            pace_options = [
+                "Normal (~2 kg / month)", 
+                "Aggressive (~3.5 kg / month)", 
+                "⚡ Rush / Fast (~4.5+ kg / month)"
+            ]
+            current_pace_index = pace_options.index(p["pace"]) if p["pace"] in pace_options else 0
+            pace = st.selectbox("Select Pace", pace_options, index=current_pace_index, label_visibility="collapsed")
 
-        submitted = st.form_submit_button("💾 Save Profile", use_container_width=True)
-        if submitted:
-            all_users[current_user]["profile"] = {
-                "age": age,
-                "gender": gender,
-                "height": height,
-                "weight": weight,
-                "target_weight": target_weight,
-                "activity": activity,
-                "pace": pace
-            }
-            save_all_users(all_users)
-            st.success("Profile updated successfully!")
-            st.rerun()
+            submitted = st.form_submit_button("💾 Save Profile", use_container_width=True)
+            if submitted:
+                all_users[current_user]["profile"] = {
+                    "age": age,
+                    "gender": gender,
+                    "height": height,
+                    "weight": weight,
+                    "target_weight": target_weight,
+                    "activity": activity,
+                    "pace": pace
+                }
+                save_all_users(all_users)
+                st.success("Profile updated successfully!")
+                st.rerun()
 
     st.markdown("---")
     if st.button("🚪 Logout", use_container_width=True):
         st.session_state.user = None
         st.rerun()
+
+# --- TOP NAVIGATION INDICATOR ---
+st.markdown(
+    "<div style='font-size: 0.8rem; color: #78716c; margin-bottom: 8px; font-weight: 600;'>"
+    "👉 Tap the top-left sidebar arrow to open Profile & Logout"
+    "</div>",
+    unsafe_allow_html=True
+)
 
 # --- CALCULATE TARGETS BASED ON PROFILE ---
 if p["gender"] == "Male":
@@ -432,7 +442,7 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- NAVIGATION TABS (WITHOUT PROFILE TAB) ---
+# --- NAVIGATION TABS ---
 nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📸 Log Meal", "📋 Today", "📅 History"])
 
 with nav_tab1:
