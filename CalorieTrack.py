@@ -12,7 +12,7 @@ st.set_page_config(
 )
 
 # --- API KEY INITIALIZATION ---
-# Check Streamlit Cloud Secrets first, then fall back to local environment variables
+# Checks Streamlit Cloud Secrets first, then falls back to local environment variables
 api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
@@ -91,9 +91,9 @@ def analyze_meal(image=None, text=""):
     if text:
         contents.append(f"Description: {text}")
 
-    # Primary model endpoint
+    # Explicitly using gemini-3.8-flash model endpoint
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.8-flash",
         contents=contents
     )
     return response.text
