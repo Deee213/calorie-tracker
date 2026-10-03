@@ -495,9 +495,18 @@ with nav_tab1:
         if text:
             contents.append(f"Description: {text}")
 
-        # Strictly using gemini-3.8-flash
-        response = client.models.generate_content(model="gemini-3.8-flash", contents=contents)
-        return response.text
+        # Primary model is gemini-3.8-flash, falling back to gemini-3.5-flash if needed
+        models_to_try = ["gemini-3.8-flash", "gemini-3.5-flash"]
+        last_error = None
+        for model_name in models_to_try:
+            try:
+                response = client.models.generate_content(model=model_name, contents=contents)
+                return response.text
+            except Exception as e:
+                last_error = str(e)
+                time.sleep(1)
+                continue
+        raise Exception(f"API Error Details: {last_error or 'Unknown error'}")
 
     if st.button("✨ Analyze & Log Meal", type="primary", use_container_width=True):
         if not meal_image and not text_description:
