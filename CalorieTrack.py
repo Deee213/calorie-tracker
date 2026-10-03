@@ -184,6 +184,20 @@ st.markdown("""
     header[data-testid="stHeader"] {
         background-color: transparent !important;
     }
+    
+    /* Custom Sidebar Expander Fix */
+    [data-testid="stSidebar"] details {
+        background-color: #ffffff;
+        border: 1px solid #f0ece1;
+        border-radius: 12px;
+        padding: 4px 8px;
+        margin-bottom: 12px;
+    }
+    [data-testid="stSidebar"] summary p {
+        font-size: 0.85rem !important;
+        font-weight: 700 !important;
+        color: #1c1917 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -340,11 +354,16 @@ with st.sidebar:
         st.session_state.user = None
         st.rerun()
 
-# --- TOP NAVIGATION INDICATOR ---
+# --- THEME-MATCHED ARROW INDICATOR HEADER ---
 st.markdown(
-    "<div style='font-size: 0.8rem; color: #78716c; margin-bottom: 8px; font-weight: 600;'>"
-    "👉 Tap the top-left sidebar arrow to open Profile & Logout"
-    "</div>",
+    """
+    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px; background: #ffffff; padding: 8px 12px; border-radius: 12px; border: 1px solid #f0ece1; width: fit-content;">
+        <svg width="22" height="22" viewBox="0 0 512 512" style="background: #f97316; border-radius: 6px; padding: 2px;">
+            <path fill="#ffffff" d="M352 115.4L332.7 96 160 268.7 332.7 441.4 352 422 198.6 268.7z"/>
+        </svg>
+        <span style="font-size: 0.78rem; font-weight: 700; color: #44403c;">Open Sidebar to Manage Profile & Logout</span>
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
