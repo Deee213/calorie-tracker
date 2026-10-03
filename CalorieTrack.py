@@ -13,19 +13,19 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- WARM CREAM AESTHETIC STYLING ---
+# --- WARM CREAM AESTHETIC STYLING & CONTRAST FIXES ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-    html, body, [class*="css"], div, span, p {
+    html, body, [class*="css"], div, span, p, label {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+        color: #1c1917 !important;
     }
 
     /* Light Theme Warm Cream Canvas Background */
     .stApp {
         background-color: #f7f4ee !important;
-        color: #1c1917 !important;
     }
 
     .block-container {
@@ -57,15 +57,21 @@ st.markdown("""
         border-radius: 14px;
         font-size: 0.75rem;
         font-weight: 600;
-        color: #a1998e;
         background-color: transparent;
     }
 
+    .day-pill .day-name, .day-pill .day-num {
+        color: #78716c !important;
+    }
+
     .day-pill.active {
-        background-color: #f97316;
-        color: #ffffff !important;
-        font-weight: 700;
+        background-color: #f97316 !important;
         box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3);
+    }
+
+    .day-pill.active .day-name, .day-pill.active .day-num {
+        color: #ffffff !important;
+        font-weight: 700 !important;
     }
 
     .day-name {
@@ -97,12 +103,12 @@ st.markdown("""
     .goal-title {
         font-size: 1.05rem;
         font-weight: 700;
-        color: #1c1917;
+        color: #1c1917 !important;
     }
 
     .goal-sub {
         font-size: 0.8rem;
-        color: #78716c;
+        color: #78716c !important;
     }
 
     /* Donut & Macro Stats Layout */
@@ -139,13 +145,13 @@ st.markdown("""
     .donut-val {
         font-size: 1.4rem;
         font-weight: 800;
-        color: #1c1917;
+        color: #1c1917 !important;
         line-height: 1;
     }
 
     .donut-lbl {
         font-size: 0.65rem;
-        color: #a8a29e;
+        color: #a8a29e !important;
         margin-top: 2px;
     }
 
@@ -165,7 +171,7 @@ st.markdown("""
         gap: 6px;
         font-size: 0.78rem;
         font-weight: 700;
-        color: #44403c;
+        color: #44403c !important;
         margin-bottom: 3px;
     }
 
@@ -188,7 +194,7 @@ st.markdown("""
 
     .macro-value-sub {
         font-size: 0.72rem;
-        color: #78716c;
+        color: #78716c !important;
         margin-top: 2px;
     }
 
@@ -202,56 +208,39 @@ st.markdown("""
         border-radius: 12px;
         font-size: 0.75rem;
         font-weight: 600;
-        color: #c2410c;
+        color: #c2410c !important;
         margin-top: 14px;
     }
 
-    /* Bottom Floating Nav */
-    .floating-nav {
-        position: fixed;
-        bottom: 16px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% - 32px);
-        max-width: 440px;
-        background-color: #18181b;
-        border-radius: 32px;
-        padding: 8px 16px;
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-        z-index: 999;
+    /* STREAMLIT FORM & TAB CONTRAST OVERRIDES */
+    button[data-baseweb="tab"] p {
+        color: #44403c !important;
+        font-weight: 700 !important;
     }
 
-    .nav-btn {
-        color: #a1a1aa;
-        font-size: 1.1rem;
-        padding: 8px 14px;
-        border-radius: 20px;
-        text-decoration: none;
+    button[data-baseweb="tab"][aria-selected="true"] p {
+        color: #f97316 !important;
     }
 
-    .nav-btn.active {
-        background-color: #ffffff;
-        color: #18181b;
-        font-weight: 700;
+    /* Fix invisible radio labels */
+    div[data-aria-label="Input Method"] label p, div[role="radiogroup"] label p {
+        color: #1c1917 !important;
+        font-weight: 600 !important;
     }
 
-    .nav-plus {
-        background-color: #f97316;
-        color: #ffffff;
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.4rem;
-        font-weight: 700;
+    /* Textarea & Inputs visibility fix */
+    textarea, input[type="text"] {
+        background-color: #ffffff !important;
+        color: #1c1917 !important;
+        border: 1px solid #e7e5e4 !important;
+        border-radius: 12px !important;
     }
 
-    /* Hide standard Streamlit header elements for cleaner view */
+    textarea::placeholder, input::placeholder {
+        color: #a8a29e !important;
+    }
+
+    /* Hide standard Streamlit header */
     header[data-testid="stHeader"] {
         background-color: transparent !important;
     }
@@ -320,17 +309,15 @@ fat_pct = min(100, int((total_fat / TARGETS["fat"]) * 100)) if TARGETS["fat"] el
 prot_pct = min(100, int((total_protein / TARGETS["protein"]) * 100)) if TARGETS["protein"] else 0
 carb_pct = min(100, int((total_carbs / TARGETS["carbs"]) * 100)) if TARGETS["carbs"] else 0
 
-# Dynamic Conic Gradient for the multi-colored ring
 fat_angle = fat_pct * 3.6
 prot_angle = fat_angle + (prot_pct * 3.6)
 carb_angle = min(360, prot_angle + (carb_pct * 3.6))
 
 conic_bg = f"conic-gradient(#3b82f6 0deg {fat_angle}deg, #eab308 {fat_angle}deg {prot_angle}deg, #22c55e {prot_angle}deg {carb_angle}deg, #f3f0e6 {carb_angle}deg 360deg)"
 
-# --- TOP DATE CALENDAR STRIP ---
+# --- TOP HEADER & DATE CALENDAR STRIP ---
 st.markdown("### 🥗 Daily Macro Tracker")
 
-# Generate 7-day strip centered around today
 date_pills_html = '<div class="calendar-strip">'
 for i in range(-3, 4):
     dt = today_dt + timedelta(days=i)
@@ -387,7 +374,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- NAVIGATION TABS ---
-nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📸 Log Meal", "📋 Today's Meals", "📅 History"])
+nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📷 Log Meal", "📋 Today's Meals", "📅 History"])
 
 # --- TAB 1: LOG MEAL ---
 with nav_tab1:
