@@ -36,7 +36,7 @@ st.markdown("""
         max-width: 480px !important;
     }
 
-    /* FLEXBOX CALENDAR STRIP (Horizontal on both Mobile & Desktop) */
+    /* HORIZONTAL RESPONSIVE CALENDAR STRIP */
     .calendar-strip-container {
         display: flex !important;
         flex-direction: row !important;
@@ -57,24 +57,26 @@ st.markdown("""
         align-items: center;
         justify-content: center;
         text-align: center !important;
-        padding: 6px 2px;
-        border-radius: 16px;
+        padding: 4px 1px;
+        border-radius: 14px;
+        margin: 0 1px;
     }
 
     .day-pill-name {
-        font-size: 0.68rem;
+        font-size: 0.62rem;
         font-weight: 600;
         color: #78716c !important;
         text-align: center !important;
-        line-height: 1.2;
+        line-height: 1.1;
+        text-transform: uppercase;
     }
 
     .day-pill-num {
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 700;
         color: #1c1917 !important;
         text-align: center !important;
-        line-height: 1.2;
+        line-height: 1.1;
         margin-top: 2px;
     }
 
@@ -240,20 +242,22 @@ st.markdown("""
         color: #a8a29e !important;
     }
 
-    /* FILE UPLOADER LIGHT STYLING FIX */
+    /* CLEAN FILE UPLOADER LIGHT STYLING */
     [data-testid="stFileUploader"] {
         background-color: #ffffff !important;
         border: 1px dashed #e7e5e4 !important;
         border-radius: 16px !important;
-        padding: 10px !important;
+        padding: 12px !important;
     }
 
     [data-testid="stFileUploader"] section {
         background-color: #ffffff !important;
     }
 
-    [data-testid="stFileUploader"] * {
-        color: #1c1917 !important;
+    [data-testid="stFileUploader"] small, 
+    [data-testid="stFileUploader"] span, 
+    [data-testid="stFileUploader"] div {
+        color: #78716c !important;
     }
 
     [data-testid="stFileUploader"] button {
@@ -337,7 +341,7 @@ carb_angle = min(360, prot_angle + (carb_pct * 3.6))
 
 conic_bg = f"conic-gradient(#3b82f6 0deg {fat_angle}deg, #eab308 {fat_angle}deg {prot_angle}deg, #22c55e {prot_angle}deg {carb_angle}deg, #f3f0e6 {carb_angle}deg 360deg)"
 
-# --- HORIZONTAL FLEXBOX CALENDAR STRIP ---
+# --- HORIZONTAL RESPONSIVE CALENDAR STRIP (DATES AT TOP) ---
 strip_html = '<div class="calendar-strip-container">'
 for i in range(-3, 4):
     dt = today_dt + timedelta(days=i)
