@@ -18,7 +18,6 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-    /* Global Typography & Light Background */
     html, body, [class*="css"], div, span, p, label {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
         color: #1c1917 !important;
@@ -86,7 +85,6 @@ st.markdown("""
         line-height: 1.1;
     }
 
-    /* Active Orange Day Oval */
     .day-pill-item.active {
         background-color: #f97316 !important;
         box-shadow: 0 4px 12px rgba(249, 115, 22, 0.35);
@@ -126,7 +124,6 @@ st.markdown("""
         color: #78716c !important;
     }
 
-    /* Donut Ring & Macro Progress Layout */
     .donut-container {
         display: flex;
         align-items: center;
@@ -170,7 +167,6 @@ st.markdown("""
         margin-top: 2px;
     }
 
-    /* Macro Progress Bars */
     .macro-bar-group {
         flex-grow: 1;
     }
@@ -212,7 +208,6 @@ st.markdown("""
         margin-top: 2px;
     }
 
-    /* Motivation Pill */
     .motivation-pill {
         display: flex;
         align-items: center;
@@ -226,7 +221,6 @@ st.markdown("""
         margin-top: 14px;
     }
 
-    /* Navigation Tabs Contrast Overrides */
     button[data-baseweb="tab"] p {
         color: #44403c !important;
         font-weight: 700 !important;
@@ -237,7 +231,6 @@ st.markdown("""
         color: #f97316 !important;
     }
 
-    /* Form Visibility Overrides */
     textarea, input[type="text"] {
         background-color: #ffffff !important;
         color: #1c1917 !important;
@@ -249,7 +242,6 @@ st.markdown("""
         color: #a8a29e !important;
     }
 
-    /* CLEAN FILE UPLOADER LIGHT STYLING */
     [data-testid="stFileUploader"] {
         background-color: #ffffff !important;
         border: 1px dashed #e7e5e4 !important;
@@ -329,7 +321,6 @@ if today_str not in st.session_state.history:
 
 today_meals = st.session_state.history[today_str]
 
-# Calculate Totals
 total_calories = sum(m.get("calories", 0) for m in today_meals)
 total_protein = sum(m.get("protein", 0) for m in today_meals)
 total_carbs = sum(m.get("carbs", 0) for m in today_meals)
@@ -337,7 +328,6 @@ total_fat = sum(m.get("fat", 0) for m in today_meals)
 
 remaining_calories = max(0, TARGETS["calories"] - total_calories)
 
-# Donut Segment Calculations
 fat_pct = min(100, int((total_fat / TARGETS["fat"]) * 100)) if TARGETS["fat"] else 0
 prot_pct = min(100, int((total_protein / TARGETS["protein"]) * 100)) if TARGETS["protein"] else 0
 carb_pct = min(100, int((total_carbs / TARGETS["carbs"]) * 100)) if TARGETS["carbs"] else 0
@@ -348,7 +338,7 @@ carb_angle = min(360, prot_angle + (carb_pct * 3.6))
 
 conic_bg = f"conic-gradient(#3b82f6 0deg {fat_angle}deg, #eab308 {fat_angle}deg {prot_angle}deg, #22c55e {prot_angle}deg {carb_angle}deg, #f3f0e6 {carb_angle}deg 360deg)"
 
-# --- HORIZONTAL OVAL CALENDAR STRIP (7 DAYS DYNAMICALLY CENTERED ON TODAY) ---
+# --- HORIZONTAL OVAL CALENDAR STRIP (7 DAYS) ---
 strip_html = '<div class="calendar-strip-container">'
 for i in range(-3, 4):
     dt = today_dt + timedelta(days=i)
@@ -409,7 +399,6 @@ st.markdown(f"""
 # --- NAVIGATION TABS ---
 nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📸 Log Meal", "📋 Today's Meals", "📅 History"])
 
-# --- TAB 1: LOG MEAL ---
 with nav_tab1:
     method = st.radio("Input Method", ["Text Description", "Camera / Upload"], horizontal=True, label_visibility="collapsed")
     
@@ -446,13 +435,10 @@ with nav_tab1:
         if text:
             contents.append(f"Description: {text}")
 
-        models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+        models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
         for model_name in models_to_try:
             try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=contents
-                )
+                response = client.models.generate_content(model=model_name, contents=contents)
                 return response.text
             except Exception:
                 time.sleep(1)
@@ -477,7 +463,6 @@ with nav_tab1:
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-# --- TAB 2: TODAY'S MEALS ---
 with nav_tab2:
     if not today_meals:
         st.info("No meals logged today yet.")
@@ -500,7 +485,6 @@ with nav_tab2:
                         save_history(st.session_state.history)
                         st.rerun()
 
-# --- TAB 3: DAILY HISTORY ---
 with nav_tab3:
     if not st.session_state.history:
         st.info("No historical logs available.")
