@@ -1,6 +1,7 @@
 from datetime import datetime
 import json
 import os
+import time
 from PIL import Image
 import streamlit as st
 from google import genai
@@ -9,60 +10,102 @@ from google import genai
 st.set_page_config(
     page_title="Daily Macro Tracker",
     page_icon="🥗",
-    layout="wide"
+    layout="centered"
 )
 
-# --- CUSTOM CSS FOR DASHBOARD LOOK ---
+# --- MODERN AESTHETIC CSS & MOBILE OPTIMIZATION ---
 st.markdown("""
     <style>
-    /* Dark Card Styling */
-    .dashboard-card {
-        background-color: #1e1e24;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    }
-    
-    /* Custom Ring Containers */
-    .ring-container {
-        text-align: center;
-        padding: 10px;
-    }
-    
-    .ring-circle {
-        width: 120px;
-        height: 120px;
-        border-radius: 50%;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    .ring-cal { border: 6px solid #4f46e5; background: #111827; }
-    .ring-prot { border: 6px solid #a855f7; background: #111827; }
-    .ring-carb { border: 6px solid #10b981; background: #111827; }
-    .ring-fat { border: 6px solid #eab308; background: #111827; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
 
-    .ring-val { font-size: 1.3rem; font-weight: bold; color: #ffffff; }
-    .ring-sub { font-size: 0.75rem; color: #9ca3af; }
-    .ring-label { font-size: 0.85rem; color: #d1d5db; margin-bottom: 4px; font-weight: 600; }
-    
-    /* Modern Input Area Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
+    html, body, [class*="css"], div, span, p {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
-    .stTabs [data-baseweb="tab"] {
-        background-color: #2a2a32;
-        border-radius: 6px;
-        color: #9ca3af;
-        padding: 8px 16px;
+
+    /* Force seamless container sizing for mobile */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 500px !important;
     }
-    .stTabs [aria-selected="true"] {
-        background-color: #3b82f6 !important;
-        color: white !important;
+
+    /* Main Remaining Calories Highlight Box */
+    .summary-card {
+        background: linear-gradient(135deg, #1e1e24 0%, #2a2a36 100%);
+        border: 1px solid #3f3f4e;
+        border-radius: 18px;
+        padding: 18px 14px;
+        text-align: center;
+        color: #ffffff;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        margin-bottom: 16px;
+    }
+
+    .summary-title {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #a1a1aa;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .summary-value {
+        font-size: 2.8rem;
+        font-weight: 800;
+        color: #6366f1;
+        line-height: 1.1;
+    }
+
+    /* Responsive 2x2 Grid Macro Cards for Mobile */
+    .macro-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 12px;
+    }
+
+    .macro-card {
+        background: #18181b;
+        border: 1px solid #27272a;
+        border-radius: 14px;
+        padding: 12px 10px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .macro-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+
+    .cal-text { color: #818cf8; }
+    .prot-text { color: #c084fc; }
+    .carb-text { color: #34d399; }
+    .fat-text { color: #facc15; }
+
+    .macro-value {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #f4f4f5;
+    }
+
+    .macro-sub {
+        font-size: 0.7rem;
+        color: #71717a;
+        margin-top: 2px;
+    }
+
+    /* Tab Customizations */
+    button[data-baseweb="tab"] {
+        font-weight: 700 !important;
+        font-size: 0.9rem !important;
+        border-radius: 10px !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -72,7 +115,6 @@ api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
     st.error("⚠️ GEMINI_API_KEY is missing!")
-    st.info("Please set GEMINI_API_KEY in Streamlit Cloud Secrets or set it in environment variables.")
     st.stop()
 
 api_key = api_key.strip()
@@ -88,23 +130,15 @@ TARGETS = {
 
 today_str = datetime.now().strftime("%Y-%m-%d")
 
-# Initialize historical daily logs dictionary
 if "history" not in st.session_state:
     st.session_state.history = {}
 
-# Ensure today's entry exists
 if today_str not in st.session_state.history:
     st.session_state.history[today_str] = []
 
 today_meals = st.session_state.history[today_str]
 
-# --- HEADER ---
-st.title("🥗 Daily Macro Tracker")
-
-# --- TOP DASHBOARD SECTION ---
-top_left, top_right = st.columns([2.5, 1])
-
-# Calculate Current Totals for Today
+# Calculate Totals
 total_calories = sum(m.get("calories", 0) for m in today_meals)
 total_protein = sum(m.get("protein", 0) for m in today_meals)
 total_carbs = sum(m.get("carbs", 0) for m in today_meals)
@@ -112,113 +146,61 @@ total_fat = sum(m.get("fat", 0) for m in today_meals)
 
 remaining_calories = max(0, TARGETS["calories"] - total_calories)
 
-with top_left:
-    st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-    st.markdown(f"<h3 style='text-align: center; color: #9ca3af; margin-bottom: 2px;'>Remaining Calories:</h3>", unsafe_allow_html=True)
-    st.markdown(f"<h1 style='text-align: center; font-size: 2.8rem; margin-top: 0;'>{remaining_calories}</h1>", unsafe_allow_html=True)
-    
-    r1, r2, r3, r4 = st.columns(4)
-    
-    # Calories Ring
-    cal_pct = int((total_calories / TARGETS["calories"]) * 100)
-    with r1:
-        st.markdown(f"""
-            <div class="ring-container">
-                <div class="ring-label">Calories</div>
-                <div class="ring-circle ring-cal">
-                    <div class="ring-val">{total_calories}</div>
-                </div>
-                <div class="ring-sub">{total_calories} of {TARGETS['calories']} ({cal_pct}%)</div>
+# --- HEADER & DASHBOARD ---
+st.title("🥗 Daily Macro Tracker")
+
+# Summary Dashboard Box
+st.markdown(f"""
+    <div class="summary-card">
+        <div class="summary-title">Remaining Calories</div>
+        <div class="summary-value">{remaining_calories}</div>
+        <div class="macro-grid">
+            <div class="macro-card">
+                <div class="macro-label cal-text">Calories</div>
+                <div class="macro-value">{total_calories}</div>
+                <div class="macro-sub">of {TARGETS['calories']} kcal</div>
             </div>
-        """, unsafe_allow_html=True)
-
-    # Protein Ring
-    with r2:
-        st.markdown(f"""
-            <div class="ring-container">
-                <div class="ring-label">Protein</div>
-                <div class="ring-circle ring-prot">
-                    <div class="ring-val">{total_protein}g</div>
-                    <div class="ring-sub">of {TARGETS['protein']}g</div>
-                </div>
-                <div class="ring-sub">{total_protein} of {TARGETS['protein']}g</div>
+            <div class="macro-card">
+                <div class="macro-label prot-text">Protein</div>
+                <div class="macro-value">{total_protein}g</div>
+                <div class="macro-sub">of {TARGETS['protein']}g</div>
             </div>
-        """, unsafe_allow_html=True)
-
-    # Carbs Ring
-    with r3:
-        st.markdown(f"""
-            <div class="ring-container">
-                <div class="ring-label">Carbs</div>
-                <div class="ring-circle ring-carb">
-                    <div class="ring-val">{total_carbs}g</div>
-                    <div class="ring-sub">of {TARGETS['carbs']}g</div>
-                </div>
-                <div class="ring-sub">{total_carbs} of {TARGETS['carbs']}g</div>
+            <div class="macro-card">
+                <div class="macro-label carb-text">Carbs</div>
+                <div class="macro-value">{total_carbs}g</div>
+                <div class="macro-sub">of {TARGETS['carbs']}g</div>
             </div>
-        """, unsafe_allow_html=True)
-
-    # Fat Ring
-    with r4:
-        st.markdown(f"""
-            <div class="ring-container">
-                <div class="ring-label">Fat</div>
-                <div class="ring-circle ring-fat">
-                    <div class="ring-val">{total_fat}g</div>
-                    <div class="ring-sub">of {TARGETS['fat']}g</div>
-                </div>
-                <div class="ring-sub">{total_fat} of {TARGETS['fat']}g</div>
+            <div class="macro-card">
+                <div class="macro-label fat-text">Fat</div>
+                <div class="macro-value">{total_fat}g</div>
+                <div class="macro-sub">of {TARGETS['fat']}g</div>
             </div>
-        """, unsafe_allow_html=True)
-        
-    st.markdown('</div>', unsafe_allow_html=True)
+        </div>
+    </div>
+""", unsafe_allow_html=True)
 
-# Right Side Panel: Today's Recent Items Log
-with top_right:
-    st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-    st.markdown("### Today's Log (Recent Items)")
-    st.divider()
-    
-    if not today_meals:
-        st.caption("No meals logged for today yet.")
-    else:
-        for idx, item in enumerate(reversed(today_meals[-4:])):
-            time_str = item.get("time", "")
-            st.markdown(f"**Ate: {item.get('meal_name', 'Meal')}** ({item.get('calories', 0)} cal)")
-            st.caption(f"🕒 {time_str} | P:{item.get('protein',0)}g C:{item.get('carbs',0)}g F:{item.get('fat',0)}g")
-            st.divider()
-            
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# --- MAIN NAVIGATION TABS ---
-nav_tab1, nav_tab2 = st.tabs(["📸 Log a Meal", "📅 Daily Calorie History"])
+# --- NAVIGATION TABS ---
+nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📸 Log Meal", "📋 Today's Log", "📅 History"])
 
 # --- TAB 1: LOG MEAL ---
 with nav_tab1:
-    st.subheader("📸 Log a Meal")
-    st.write("Analyze & Log Method")
-    
-    # Input tabs: TEXT and CAMERA (Voice removed)
-    method_tab1, method_tab2 = st.tabs(["TEXT", "CAMERA"])
+    method = st.radio("Input Type", ["Text Description", "Camera / Upload"], horizontal=True, label_visibility="collapsed")
     
     meal_image = None
     text_description = ""
 
-    with method_tab1:
+    if method == "Text Description":
         text_description = st.text_area(
-            "Describe what you ate (e.g., '2 scrambled eggs with 1 slice of whole wheat toast'):",
-            placeholder="Describe what you ate...",
-            height=120,
-            max_chars=500
+            "Describe your meal:",
+            placeholder="e.g., 2 scrambled eggs with 1 slice of toast...",
+            height=100
         )
-
-    with method_tab2:
-        uploaded_file = st.file_uploader("Snap or upload an image of your meal", type=["jpg", "jpeg", "png"])
+    else:
+        uploaded_file = st.file_uploader("Snap or upload meal picture", type=["jpg", "jpeg", "png"])
         if uploaded_file:
             meal_image = Image.open(uploaded_file)
-            st.image(meal_image, caption="Meal Preview", width=300)
+            st.image(meal_image, caption="Meal Preview", use_container_width=True)
 
-    # --- GEMINI ANALYSIS FUNCTION ---
     def analyze_meal(image=None, text=""):
         prompt = """
         Analyze this food item and provide an estimated breakdown of macros in JSON format ONLY.
@@ -237,61 +219,67 @@ with nav_tab1:
         if text:
             contents.append(f"Description: {text}")
 
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=contents
-        )
-        return response.text
+        models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
+        for model_name in models_to_try:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents
+                )
+                return response.text
+            except Exception:
+                time.sleep(1)
+                continue
+        raise Exception("API server is busy. Please try logging again.")
 
-    if st.button("Analyze & Log Meal 💫", type="primary"):
+    if st.button("✨ Analyze & Log Meal", type="primary", use_container_width=True):
         if not meal_image and not text_description:
-            st.warning("Please upload an image or enter a text description.")
+            st.warning("Please enter a description or upload an image.")
         else:
-            with st.spinner("Analyzing macros with Gemini AI..."):
+            with st.spinner("Analyzing macros..."):
                 try:
                     result_text = analyze_meal(image=meal_image, text=text_description)
                     clean_json = result_text.strip().replace("```json", "").replace("```", "")
                     data = json.loads(clean_json)
-                    
-                    # Add timestamp
                     data["time"] = datetime.now().strftime("%I:%M %p")
 
                     st.session_state.history[today_str].append(data)
                     st.success(f"Logged: {data.get('meal_name', 'Meal')} ({data.get('calories', 0)} kcal)")
                     st.rerun()
-
                 except Exception as e:
-                    st.error(f"Error analyzing meal: {e}")
+                    st.error(f"Error: {e}")
 
-# --- TAB 2: DAILY CALORIE HISTORY ---
+# --- TAB 2: TODAY'S LOG ---
 with nav_tab2:
-    st.subheader("📅 Daily Intake History")
-    
-    if not st.session_state.history:
-        st.info("No history recorded yet.")
+    if not today_meals:
+        st.info("No meals logged today yet.")
     else:
-        # Sort dates descending (newest first)
+        for idx, item in enumerate(reversed(today_meals)):
+            real_idx = len(today_meals) - 1 - idx
+            with st.container(border=True):
+                col_info, col_del = st.columns([5, 1])
+                with col_info:
+                    st.markdown(f"**{item.get('meal_name', 'Meal')}** ({item.get('time', '')})")
+                    st.caption(
+                        f"🔥 {item.get('calories', 0)} kcal | "
+                        f"🥩 P: {item.get('protein', 0)}g | "
+                        f"🍞 C: {item.get('carbs', 0)}g | "
+                        f"🥑 F: {item.get('fat', 0)}g"
+                    )
+                with col_del:
+                    if st.button("🗑️", key=f"del_{real_idx}"):
+                        st.session_state.history[today_str].pop(real_idx)
+                        st.rerun()
+
+# --- TAB 3: DAILY HISTORY ---
+with nav_tab3:
+    if not st.session_state.history:
+        st.info("No historical data available.")
+    else:
         for date_key in sorted(st.session_state.history.keys(), reverse=True):
             day_meals = st.session_state.history[date_key]
             day_calories = sum(m.get("calories", 0) for m in day_meals)
-            day_protein = sum(m.get("protein", 0) for m in day_meals)
-            day_carbs = sum(m.get("carbs", 0) for m in day_meals)
-            day_fat = sum(m.get("fat", 0) for m in day_meals)
             
-            with st.expander(f"📆 **{date_key}** — Total Intake: **{day_calories} kcal**"):
-                h_col1, h_col2, h_col3, h_col4 = st.columns(4)
-                h_col1.metric("Calories", f"{day_calories} / {TARGETS['calories']} kcal")
-                h_col2.metric("Protein", f"{day_protein}g / {TARGETS['protein']}g")
-                h_col3.metric("Carbs", f"{day_carbs}g / {TARGETS['carbs']}g")
-                h_col4.metric("Fat", f"{day_fat}g / {TARGETS['fat']}g")
-                
-                st.divider()
-                st.markdown("**Meals Logged:**")
-                if not day_meals:
-                    st.caption("No meals recorded for this day.")
-                else:
-                    for m_idx, m in enumerate(day_meals, 1):
-                        st.write(
-                            f"{m_idx}. **{m.get('meal_name', 'Meal')}** ({m.get('time', '')}) — "
-                            f"{m.get('calories', 0)} kcal | P: {m.get('protein', 0)}g | C: {m.get('carbs', 0)}g | F: {m.get('fat', 0)}g"
-                        )
+            with st.expander(f"📆 **{date_key}** — **{day_calories} kcal**"):
+                for m in day_meals:
+                    st.write(f"• **{m.get('meal_name', 'Meal')}**: {m.get('calories', 0)} kcal")
