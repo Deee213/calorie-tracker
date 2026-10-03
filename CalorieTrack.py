@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 import time
@@ -13,99 +13,247 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- MODERN AESTHETIC CSS & MOBILE OPTIMIZATION ---
+# --- WARM CREAM AESTHETIC STYLING ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
     html, body, [class*="css"], div, span, p {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
     }
 
-    /* Force seamless container sizing for mobile */
-    .block-container {
-        padding-top: 1.5rem !important;
-        padding-bottom: 2rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
-        max-width: 500px !important;
+    /* Light Theme Warm Cream Canvas Background */
+    .stApp {
+        background-color: #f7f4ee !important;
+        color: #1c1917 !important;
     }
 
-    /* Main Remaining Calories Highlight Box */
-    .summary-card {
-        background: linear-gradient(135deg, #1e1e24 0%, #2a2a36 100%);
-        border: 1px solid #3f3f4e;
-        border-radius: 18px;
-        padding: 18px 14px;
-        text-align: center;
-        color: #ffffff;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    .block-container {
+        padding-top: 1rem !important;
+        padding-bottom: 5rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: 480px !important;
+    }
+
+    /* Top Date Calendar Selector Pill Box */
+    .calendar-strip {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #efeae1;
+        padding: 8px 12px;
+        border-radius: 20px;
         margin-bottom: 16px;
     }
 
-    .summary-title {
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: #a1a1aa;
-        font-weight: 600;
-        margin-bottom: 4px;
-    }
-
-    .summary-value {
-        font-size: 2.8rem;
-        font-weight: 800;
-        color: #6366f1;
-        line-height: 1.1;
-    }
-
-    /* Responsive 2x2 Grid Macro Cards for Mobile */
-    .macro-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-        margin-top: 12px;
-    }
-
-    .macro-card {
-        background: #18181b;
-        border: 1px solid #27272a;
+    .day-pill {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 52px;
         border-radius: 14px;
-        padding: 12px 10px;
-        text-align: center;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-
-    .macro-label {
         font-size: 0.75rem;
+        font-weight: 600;
+        color: #a1998e;
+        background-color: transparent;
+    }
+
+    .day-pill.active {
+        background-color: #f97316;
+        color: #ffffff !important;
         font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 4px;
+        box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3);
     }
 
-    .cal-text { color: #818cf8; }
-    .prot-text { color: #c084fc; }
-    .carb-text { color: #34d399; }
-    .fat-text { color: #facc15; }
+    .day-name {
+        font-size: 0.68rem;
+        margin-bottom: 2px;
+    }
 
-    .macro-value {
-        font-size: 1.15rem;
+    .day-num {
+        font-size: 0.9rem;
+    }
+
+    /* Card Wrapper */
+    .warm-card {
+        background-color: #ffffff;
+        border-radius: 24px;
+        padding: 20px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+        margin-bottom: 16px;
+        border: 1px solid #f0ece1;
+    }
+
+    .goal-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .goal-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #1c1917;
+    }
+
+    .goal-sub {
+        font-size: 0.8rem;
+        color: #78716c;
+    }
+
+    /* Donut & Macro Stats Layout */
+    .donut-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .donut-circle {
+        position: relative;
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .donut-inner {
+        position: absolute;
+        width: 104px;
+        height: 104px;
+        background: #ffffff;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .donut-val {
+        font-size: 1.4rem;
         font-weight: 800;
-        color: #f4f4f5;
+        color: #1c1917;
+        line-height: 1;
     }
 
-    .macro-sub {
-        font-size: 0.7rem;
-        color: #71717a;
+    .donut-lbl {
+        font-size: 0.65rem;
+        color: #a8a29e;
         margin-top: 2px;
     }
 
-    /* Tab Customizations */
-    button[data-baseweb="tab"] {
-        font-weight: 700 !important;
-        font-size: 0.9rem !important;
-        border-radius: 10px !important;
+    /* Macro Progress Bars */
+    .macro-bar-group {
+        flex-grow: 1;
+    }
+
+    .macro-bar-item {
+        margin-bottom: 10px;
+    }
+
+    .macro-bar-header {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 6px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #44403c;
+        margin-bottom: 3px;
+    }
+
+    .bar-bg {
+        width: 100%;
+        height: 6px;
+        background-color: #f3f0e6;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .bar-fill {
+        height: 100%;
+        border-radius: 3px;
+    }
+
+    .bar-fat { background-color: #3b82f6; }
+    .bar-protein { background-color: #eab308; }
+    .bar-carbs { background-color: #22c55e; }
+
+    .macro-value-sub {
+        font-size: 0.72rem;
+        color: #78716c;
+        margin-top: 2px;
+    }
+
+    /* Motivation Pills */
+    .motivation-pill {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background-color: #fff7ed;
+        padding: 8px 12px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #c2410c;
+        margin-top: 14px;
+    }
+
+    /* Bottom Floating Nav */
+    .floating-nav {
+        position: fixed;
+        bottom: 16px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 32px);
+        max-width: 440px;
+        background-color: #18181b;
+        border-radius: 32px;
+        padding: 8px 16px;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+        z-index: 999;
+    }
+
+    .nav-btn {
+        color: #a1a1aa;
+        font-size: 1.1rem;
+        padding: 8px 14px;
+        border-radius: 20px;
+        text-decoration: none;
+    }
+
+    .nav-btn.active {
+        background-color: #ffffff;
+        color: #18181b;
+        font-weight: 700;
+    }
+
+    .nav-plus {
+        background-color: #f97316;
+        color: #ffffff;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+
+    /* Hide standard Streamlit header elements for cleaner view */
+    header[data-testid="stHeader"] {
+        background-color: transparent !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -142,13 +290,14 @@ def save_history(history_data):
 
 # --- SESSION STATE & TARGETS ---
 TARGETS = {
-    "calories": 1650,
-    "protein": 110,
-    "carbs": 190,
-    "fat": 50
+    "calories": 2500,
+    "protein": 66,
+    "carbs": 136,
+    "fat": 77
 }
 
-today_str = datetime.now().strftime("%Y-%m-%d")
+today_dt = datetime.now()
+today_str = today_dt.strftime("%Y-%m-%d")
 
 if "history" not in st.session_state:
     st.session_state.history = load_history()
@@ -166,45 +315,83 @@ total_fat = sum(m.get("fat", 0) for m in today_meals)
 
 remaining_calories = max(0, TARGETS["calories"] - total_calories)
 
-# --- HEADER & DASHBOARD ---
-st.title("🥗 Daily Macro Tracker")
+# Donut Segment Percentage Calculations
+fat_pct = min(100, int((total_fat / TARGETS["fat"]) * 100)) if TARGETS["fat"] else 0
+prot_pct = min(100, int((total_protein / TARGETS["protein"]) * 100)) if TARGETS["protein"] else 0
+carb_pct = min(100, int((total_carbs / TARGETS["carbs"]) * 100)) if TARGETS["carbs"] else 0
 
-# Summary Dashboard Box
+# Dynamic Conic Gradient for the multi-colored ring
+fat_angle = fat_pct * 3.6
+prot_angle = fat_angle + (prot_pct * 3.6)
+carb_angle = min(360, prot_angle + (carb_pct * 3.6))
+
+conic_bg = f"conic-gradient(#3b82f6 0deg {fat_angle}deg, #eab308 {fat_angle}deg {prot_angle}deg, #22c55e {prot_angle}deg {carb_angle}deg, #f3f0e6 {carb_angle}deg 360deg)"
+
+# --- TOP DATE CALENDAR STRIP ---
+st.markdown("### 🥗 Daily Macro Tracker")
+
+# Generate 7-day strip centered around today
+date_pills_html = '<div class="calendar-strip">'
+for i in range(-3, 4):
+    dt = today_dt + timedelta(days=i)
+    is_active = "active" if i == 0 else ""
+    date_pills_html += f"""
+        <div class="day-pill {is_active}">
+            <div class="day-name">{dt.strftime('%a')}</div>
+            <div class="day-num">{dt.strftime('%d')}</div>
+        </div>
+    """
+date_pills_html += '</div>'
+st.markdown(date_pills_html, unsafe_allow_html=True)
+
+# --- MAIN NUTRITION SUMMARY CARD ---
 st.markdown(f"""
-    <div class="summary-card">
-        <div class="summary-title">Remaining Calories</div>
-        <div class="summary-value">{remaining_calories}</div>
-        <div class="macro-grid">
-            <div class="macro-card">
-                <div class="macro-label cal-text">Calories</div>
-                <div class="macro-value">{total_calories}</div>
-                <div class="macro-sub">of {TARGETS['calories']} kcal</div>
+    <div class="warm-card">
+        <div class="goal-header">
+            <span style="font-size: 1.2rem;">⚡</span>
+            <div>
+                <div class="goal-title">Calorie Goal: {TARGETS['calories']:,} kcal</div>
+                <div class="goal-sub">Remaining only {remaining_calories:,} kcal</div>
             </div>
-            <div class="macro-card">
-                <div class="macro-label prot-text">Protein</div>
-                <div class="macro-value">{total_protein}g</div>
-                <div class="macro-sub">of {TARGETS['protein']}g</div>
+        </div>
+        <div class="donut-container">
+            <div class="donut-circle" style="background: {conic_bg};">
+                <div class="donut-inner">
+                    <div class="donut-lbl">Consumed</div>
+                    <div class="donut-val">{total_calories}</div>
+                    <div class="donut-lbl">kcal</div>
+                </div>
             </div>
-            <div class="macro-card">
-                <div class="macro-label carb-text">Carbs</div>
-                <div class="macro-value">{total_carbs}g</div>
-                <div class="macro-sub">of {TARGETS['carbs']}g</div>
+            <div class="macro-bar-group">
+                <div class="macro-bar-item">
+                    <div class="macro-bar-header">🌀 Fat</div>
+                    <div class="bar-bg"><div class="bar-fill bar-fat" style="width: {fat_pct}%;"></div></div>
+                    <div class="macro-value-sub"><b>{total_fat}g</b> / {TARGETS['fat']}g</div>
+                </div>
+                <div class="macro-bar-item">
+                    <div class="macro-bar-header">🌽 Protein</div>
+                    <div class="bar-bg"><div class="bar-fill bar-protein" style="width: {prot_pct}%;"></div></div>
+                    <div class="macro-value-sub"><b>{total_protein}g</b> / {TARGETS['protein']}g</div>
+                </div>
+                <div class="macro-bar-item">
+                    <div class="macro-bar-header">🌾 Carbs</div>
+                    <div class="bar-bg"><div class="bar-fill bar-carbs" style="width: {carb_pct}%;"></div></div>
+                    <div class="macro-value-sub"><b>{total_carbs}g</b> / {TARGETS['carbs']}g</div>
+                </div>
             </div>
-            <div class="macro-card">
-                <div class="macro-label fat-text">Fat</div>
-                <div class="macro-value">{total_fat}g</div>
-                <div class="macro-sub">of {TARGETS['fat']}g</div>
-            </div>
+        </div>
+        <div class="motivation-pill">
+            ✨ You are doing great!
         </div>
     </div>
 """, unsafe_allow_html=True)
 
 # --- NAVIGATION TABS ---
-nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📸 Log Meal", "📋 Today's Log", "📅 History"])
+nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📸 Log Meal", "📋 Today's Meals", "📅 History"])
 
 # --- TAB 1: LOG MEAL ---
 with nav_tab1:
-    method = st.radio("Input Type", ["Text Description", "Camera / Upload"], horizontal=True, label_visibility="collapsed")
+    method = st.radio("Input Method", ["Text Description", "Camera / Upload"], horizontal=True, label_visibility="collapsed")
     
     meal_image = None
     text_description = ""
@@ -212,7 +399,7 @@ with nav_tab1:
     if method == "Text Description":
         text_description = st.text_area(
             "Describe your meal:",
-            placeholder="e.g., 2 scrambled eggs with 1 slice of toast...",
+            placeholder="e.g., Oatmeal with whole milk and berries...",
             height=100
         )
     else:
@@ -239,7 +426,6 @@ with nav_tab1:
         if text:
             contents.append(f"Description: {text}")
 
-        # Primary model with fallback endpoints to handle intermittent 503 traffic spikes
         models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
         for model_name in models_to_try:
             try:
@@ -251,11 +437,11 @@ with nav_tab1:
             except Exception:
                 time.sleep(1)
                 continue
-        raise Exception("API servers are currently busy. Please try logging again.")
+        raise Exception("API server busy. Please try logging again.")
 
     if st.button("✨ Analyze & Log Meal", type="primary", use_container_width=True):
         if not meal_image and not text_description:
-            st.warning("Please enter a description or upload an image.")
+            st.warning("Please describe or upload an image of your meal.")
         else:
             with st.spinner("Analyzing macros..."):
                 try:
@@ -265,13 +451,13 @@ with nav_tab1:
                     data["time"] = datetime.now().strftime("%I:%M %p")
 
                     st.session_state.history[today_str].append(data)
-                    save_history(st.session_state.history)  # Persist to disk
+                    save_history(st.session_state.history)
                     st.success(f"Logged: {data.get('meal_name', 'Meal')} ({data.get('calories', 0)} kcal)")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-# --- TAB 2: TODAY'S LOG ---
+# --- TAB 2: TODAY'S MEALS ---
 with nav_tab2:
     if not today_meals:
         st.info("No meals logged today yet.")
@@ -284,14 +470,14 @@ with nav_tab2:
                     st.markdown(f"**{item.get('meal_name', 'Meal')}** ({item.get('time', '')})")
                     st.caption(
                         f"🔥 {item.get('calories', 0)} kcal | "
-                        f"🥩 P: {item.get('protein', 0)}g | "
-                        f"🍞 C: {item.get('carbs', 0)}g | "
-                        f"🥑 F: {item.get('fat', 0)}g"
+                        f"🌀 Fat: {item.get('fat', 0)}g | "
+                        f"🌽 Protein: {item.get('protein', 0)}g | "
+                        f"🌾 Carbs: {item.get('carbs', 0)}g"
                     )
                 with col_del:
                     if st.button("🗑️", key=f"del_{real_idx}"):
                         st.session_state.history[today_str].pop(real_idx)
-                        save_history(st.session_state.history)  # Persist update to disk
+                        save_history(st.session_state.history)
                         st.rerun()
 
 # --- TAB 3: DAILY HISTORY ---
@@ -305,4 +491,4 @@ with nav_tab3:
             
             with st.expander(f"📆 **{date_key}** — **{day_calories} kcal**"):
                 for m in day_meals:
-                    st.write(f"• **{m.get('meal_name', 'Meal')}**: {m.get('calories', 0)} kcal (P: {m.get('protein', 0)}g | C: {m.get('carbs', 0)}g | F: {m.get('fat', 0)}g)")
+                    st.write(f"• **{m.get('meal_name', 'Meal')}**: {m.get('calories', 0)} kcal (Fat: {m.get('fat', 0)}g | Prot: {m.get('protein', 0)}g | Carbs: {m.get('carbs', 0)}g)")
