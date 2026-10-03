@@ -36,7 +36,7 @@ st.markdown("""
         max-width: 480px !important;
     }
 
-    /* HORIZONTAL OVAL CALENDAR STRIP */
+    /* HORIZONTAL OVAL CALENDAR STRIP (7 DAYS) */
     .calendar-strip-container {
         display: flex !important;
         flex-direction: row !important;
@@ -348,7 +348,7 @@ carb_angle = min(360, prot_angle + (carb_pct * 3.6))
 
 conic_bg = f"conic-gradient(#3b82f6 0deg {fat_angle}deg, #eab308 {fat_angle}deg {prot_angle}deg, #22c55e {prot_angle}deg {carb_angle}deg, #f3f0e6 {carb_angle}deg 360deg)"
 
-# --- HORIZONTAL OVAL CALENDAR STRIP ---
+# --- HORIZONTAL OVAL CALENDAR STRIP (7 DAYS DYNAMICALLY CENTERED ON TODAY) ---
 strip_html = '<div class="calendar-strip-container">'
 for i in range(-3, 4):
     dt = today_dt + timedelta(days=i)
