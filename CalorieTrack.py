@@ -435,7 +435,7 @@ with nav_tab1:
         if text:
             contents.append(f"Description: {text}")
 
-        models_to_try = ["gemini-2.5-flash", "gemini-1.5-flash"]
+        models_to_try = ["gemini-3.8-flash", "gemini-3.5-flash"]
         for model_name in models_to_try:
             try:
                 response = client.models.generate_content(model=model_name, contents=contents)
