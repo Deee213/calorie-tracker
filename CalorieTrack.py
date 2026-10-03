@@ -185,18 +185,25 @@ st.markdown("""
         background-color: transparent !important;
     }
     
-    /* Custom Sidebar Expander Fix */
+    /* Custom Sidebar Expander Overlap Fix */
     [data-testid="stSidebar"] details {
         background-color: #ffffff;
         border: 1px solid #f0ece1;
         border-radius: 12px;
-        padding: 4px 8px;
+        padding: 6px 12px;
         margin-bottom: 12px;
+    }
+    [data-testid="stSidebar"] details summary {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        flex-direction: row-reverse !important;
     }
     [data-testid="stSidebar"] summary p {
         font-size: 0.85rem !important;
         font-weight: 700 !important;
         color: #1c1917 !important;
+        margin: 0 !important;
     }
     </style>
 """, unsafe_allow_html=True)
