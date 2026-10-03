@@ -31,41 +31,61 @@ st.markdown("""
     .block-container {
         padding-top: 1rem !important;
         padding-bottom: 4rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
         max-width: 480px !important;
     }
 
-    /* Top Date Calendar Selector Pill Box */
-    div[data-testid="stColumn"] {
+    /* FLEXBOX CALENDAR STRIP (Horizontal on both Mobile & Desktop) */
+    .calendar-strip-container {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: space-between !important;
+        align-items: center !important;
         background-color: #efeae1;
         border-radius: 20px;
-        padding: 8px 0px;
-        text-align: center;
+        padding: 6px 4px;
+        margin-bottom: 16px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .day-pill-item {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center !important;
+        padding: 6px 2px;
+        border-radius: 16px;
     }
 
     .day-pill-name {
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         font-weight: 600;
         color: #78716c !important;
+        text-align: center !important;
+        line-height: 1.2;
     }
 
     .day-pill-num {
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         font-weight: 700;
         color: #1c1917 !important;
+        text-align: center !important;
+        line-height: 1.2;
+        margin-top: 2px;
     }
 
-    /* Active Day Pill (Orange) */
-    .day-pill-active {
+    /* Active Orange Day Pill */
+    .day-pill-item.active {
         background-color: #f97316 !important;
-        border-radius: 16px;
-        padding: 4px 0px;
         box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3);
     }
 
-    .day-pill-active .day-pill-name, 
-    .day-pill-active .day-pill-num {
+    .day-pill-item.active .day-pill-name, 
+    .day-pill-item.active .day-pill-num {
         color: #ffffff !important;
     }
 
@@ -75,7 +95,6 @@ st.markdown("""
         border-radius: 24px;
         padding: 20px;
         box-shadow: 0 4px 16px rgba(0,0,0,0.03);
-        margin-top: 10px;
         margin-bottom: 16px;
         border: 1px solid #f0ece1;
     }
@@ -221,6 +240,29 @@ st.markdown("""
         color: #a8a29e !important;
     }
 
+    /* FILE UPLOADER LIGHT STYLING FIX */
+    [data-testid="stFileUploader"] {
+        background-color: #ffffff !important;
+        border: 1px dashed #e7e5e4 !important;
+        border-radius: 16px !important;
+        padding: 10px !important;
+    }
+
+    [data-testid="stFileUploader"] section {
+        background-color: #ffffff !important;
+    }
+
+    [data-testid="stFileUploader"] * {
+        color: #1c1917 !important;
+    }
+
+    [data-testid="stFileUploader"] button {
+        background-color: #f3f0e6 !important;
+        border: 1px solid #e7e5e4 !important;
+        color: #1c1917 !important;
+        border-radius: 10px !important;
+    }
+
     header[data-testid="stHeader"] {
         background-color: transparent !important;
     }
@@ -295,27 +337,20 @@ carb_angle = min(360, prot_angle + (carb_pct * 3.6))
 
 conic_bg = f"conic-gradient(#3b82f6 0deg {fat_angle}deg, #eab308 {fat_angle}deg {prot_angle}deg, #22c55e {prot_angle}deg {carb_angle}deg, #f3f0e6 {carb_angle}deg 360deg)"
 
-# --- TOP DATE CALENDAR STRIP (NATIVE STREAMLIT COLUMNS) ---
-cols = st.columns(7)
-for idx, i in enumerate(range(-3, 4)):
+# --- HORIZONTAL FLEXBOX CALENDAR STRIP ---
+strip_html = '<div class="calendar-strip-container">'
+for i in range(-3, 4):
     dt = today_dt + timedelta(days=i)
-    is_today = (i == 0)
-    
-    with cols[idx]:
-        if is_today:
-            st.markdown(f"""
-                <div class="day-pill-active">
-                    <div class="day-pill-name">{dt.strftime('%a')}</div>
-                    <div class="day-pill-num">{dt.strftime('%d')}</div>
-                </div>
-            """, unsafe_allow_html=True)
-        else:
-            st.markdown(f"""
-                <div>
-                    <div class="day-pill-name">{dt.strftime('%a')}</div>
-                    <div class="day-pill-num">{dt.strftime('%d')}</div>
-                </div>
-            """, unsafe_allow_html=True)
+    active_class = "active" if i == 0 else ""
+    strip_html += f"""
+        <div class="day-pill-item {active_class}">
+            <div class="day-pill-name">{dt.strftime('%a')}</div>
+            <div class="day-pill-num">{dt.strftime('%d')}</div>
+        </div>
+    """
+strip_html += '</div>'
+
+st.markdown(strip_html, unsafe_allow_html=True)
 
 # --- MAIN NUTRITION SUMMARY CARD ---
 st.markdown(f"""
@@ -453,7 +488,7 @@ with nav_tab2:
                         save_history(st.session_state.history)
                         st.rerun()
 
-# --- TAB 3: DAILY HISTORY (CLEAN CARD DISPLAY) ---
+# --- TAB 3: DAILY HISTORY ---
 with nav_tab3:
     if not st.session_state.history:
         st.info("No historical logs available.")
@@ -462,7 +497,6 @@ with nav_tab3:
             day_meals = st.session_state.history[date_key]
             day_calories = sum(m.get("calories", 0) for m in day_meals)
             
-            # Format date to display day name (e.g., "Saturday, Oct 03, 2026")
             try:
                 formatted_date = datetime.strptime(date_key, "%Y-%m-%d").strftime("%A, %b %d, %Y")
             except Exception:
