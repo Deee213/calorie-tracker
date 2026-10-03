@@ -1,3 +1,4 @@
+import json
 import os
 from PIL import Image
 import streamlit as st
@@ -19,8 +20,11 @@ if not api_key:
     st.info("Please set GEMINI_API_KEY in Streamlit Cloud Secrets or set it in environment variables.")
     st.stop()
 
-# Initialize Gemini Client
-client = genai.Client(api_key=api_key)
+# Ensure GEMINI_API_KEY environment variable is set for the google-genai SDK
+os.environ["GEMINI_API_KEY"] = api_key.strip()
+
+# Initialize Gemini Client automatically using environment variable
+client = genai.Client()
 
 # --- SESSION STATE (DAILY MACROS) ---
 # Default targets: 1,650 kcal, 110g Protein, 190g Carbs, 50g Fat
@@ -101,7 +105,6 @@ if st.button("Analyze & Log Meal", type="primary"):
     else:
         with st.spinner("Analyzing macros with Gemini AI..."):
             try:
-                import json
                 result_text = analyze_meal(image=meal_image, text=text_description)
                 
                 # Clean up response string if markdown formatting is included
