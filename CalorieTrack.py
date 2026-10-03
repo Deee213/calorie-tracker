@@ -495,7 +495,8 @@ with nav_tab1:
         if text:
             contents.append(f"Description: {text}")
 
-        models_to_try = ["gemini-3.8-flash", "gemini-2.8-flash", "gemini-2.5-flash"]
+        # Explicitly using gemini-3.8-flash as requested
+        models_to_try = ["gemini-3.8-flash", "gemini-2.8-flash"]
         last_error = None
         for model_name in models_to_try:
             try:
