@@ -115,10 +115,30 @@ api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
     st.error("⚠️ GEMINI_API_KEY is missing!")
+    st.info("Please set GEMINI_API_KEY in Streamlit Cloud Secrets or set it in environment variables.")
     st.stop()
 
 api_key = api_key.strip()
 client = genai.Client(api_key=api_key)
+
+# --- LOCAL FILE PERSISTENCE HELPERS ---
+HISTORY_FILE = "history.json"
+
+def load_history():
+    if os.path.exists(HISTORY_FILE):
+        try:
+            with open(HISTORY_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_history(history_data):
+    try:
+        with open(HISTORY_FILE, "w") as f:
+            json.dump(history_data, f, indent=4)
+    except Exception as e:
+        st.error(f"Failed to save history: {e}")
 
 # --- SESSION STATE & TARGETS ---
 TARGETS = {
@@ -131,7 +151,7 @@ TARGETS = {
 today_str = datetime.now().strftime("%Y-%m-%d")
 
 if "history" not in st.session_state:
-    st.session_state.history = {}
+    st.session_state.history = load_history()
 
 if today_str not in st.session_state.history:
     st.session_state.history[today_str] = []
@@ -219,6 +239,7 @@ with nav_tab1:
         if text:
             contents.append(f"Description: {text}")
 
+        # Primary model with fallback endpoints to handle intermittent 503 traffic spikes
         models_to_try = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-1.5-flash"]
         for model_name in models_to_try:
             try:
@@ -230,7 +251,7 @@ with nav_tab1:
             except Exception:
                 time.sleep(1)
                 continue
-        raise Exception("API server is busy. Please try logging again.")
+        raise Exception("API servers are currently busy. Please try logging again.")
 
     if st.button("✨ Analyze & Log Meal", type="primary", use_container_width=True):
         if not meal_image and not text_description:
@@ -244,6 +265,7 @@ with nav_tab1:
                     data["time"] = datetime.now().strftime("%I:%M %p")
 
                     st.session_state.history[today_str].append(data)
+                    save_history(st.session_state.history)  # Persist to disk
                     st.success(f"Logged: {data.get('meal_name', 'Meal')} ({data.get('calories', 0)} kcal)")
                     st.rerun()
                 except Exception as e:
@@ -269,6 +291,7 @@ with nav_tab2:
                 with col_del:
                     if st.button("🗑️", key=f"del_{real_idx}"):
                         st.session_state.history[today_str].pop(real_idx)
+                        save_history(st.session_state.history)  # Persist update to disk
                         st.rerun()
 
 # --- TAB 3: DAILY HISTORY ---
@@ -282,4 +305,4 @@ with nav_tab3:
             
             with st.expander(f"📆 **{date_key}** — **{day_calories} kcal**"):
                 for m in day_meals:
-                    st.write(f"• **{m.get('meal_name', 'Meal')}**: {m.get('calories', 0)} kcal")
+                    st.write(f"• **{m.get('meal_name', 'Meal')}**: {m.get('calories', 0)} kcal (P: {m.get('protein', 0)}g | C: {m.get('carbs', 0)}g | F: {m.get('fat', 0)}g)")
