@@ -1,131 +1,133 @@
 import os
-import re
-import json
+from PIL import Image
 import streamlit as st
 from google import genai
-from PIL import Image
 
-# Page Configuration
-st.set_page_config(page_title="Running & Calorie Tracker", page_icon="🏃", layout="centered")
+# --- PAGE CONFIGURATION ---
+st.set_page_config(
+    page_title="Calorie Tracker",
+    page_icon="🥗",
+    layout="centered"
+)
 
-# Daily Targets
-DAILY_TARGET_KCAL = 1650
-TARGET_PROTEIN = 110
-TARGET_CARBS = 190
-TARGET_FAT = 50
-
-# Check API Key
-api_key = os.environ.get("AQ.Ab8RN6JGWnJMPkmo42vxRItg5-8HTINXHfm57HgJndonTK53RQ")
+# --- API KEY INITIALIZATION ---
+# Checks Streamlit Cloud Secrets first, then falls back to local environment variables
+api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
 if not api_key:
     st.error("⚠️ GEMINI_API_KEY is missing!")
-    st.info("Please set it in PowerShell before running Streamlit:")
-    st.code('$env:GEMINI_API_KEY="your_api_key_here"', language="powershell")
+    st.info("Please set GEMINI_API_KEY in Streamlit Cloud Secrets or set it in environment variables.")
     st.stop()
 
 # Initialize Gemini Client
 client = genai.Client(api_key=api_key)
 
-# Initialize Session State
-if "total_kcal" not in st.session_state:
-    st.session_state.total_kcal = 0
-if "total_protein" not in st.session_state:
-    st.session_state.total_protein = 0
-if "total_carbs" not in st.session_state:
-    st.session_state.total_carbs = 0
-if "total_fat" not in st.session_state:
-    st.session_state.total_fat = 0
+# --- SESSION STATE (DAILY MACROS) ---
+# Default targets: 1,650 kcal, 110g Protein, 190g Carbs, 50g Fat
 if "logged_meals" not in st.session_state:
     st.session_state.logged_meals = []
 
-# Header
-st.title("🏃 AI Calorie & Macro Tracker")
-st.caption("Upload your meal image to estimate calories and macros toward your 1,650 kcal target.")
+TARGETS = {
+    "calories": 1650,
+    "protein": 110,
+    "carbs": 190,
+    "fat": 50
+}
 
-# Sidebar Progress
-st.sidebar.header("📊 Daily Progress")
-remaining_kcal = DAILY_TARGET_KCAL - st.session_state.total_kcal
+# --- HEADER & PROGRESS ---
+st.title("🥗 Daily Macro Tracker")
 
-st.sidebar.metric(
-    label="Calories Remaining", 
-    value=f"{remaining_kcal} kcal", 
-    delta=f"Target: {DAILY_TARGET_KCAL} kcal"
-)
-st.sidebar.progress(min(max(st.session_state.total_kcal / DAILY_TARGET_KCAL, 0.0), 1.0))
+# Calculate current totals
+total_calories = sum(m.get("calories", 0) for m in st.session_state.logged_meals)
+total_protein = sum(m.get("protein", 0) for m in st.session_state.logged_meals)
+total_carbs = sum(m.get("carbs", 0) for m in st.session_state.logged_meals)
+total_fat = sum(m.get("fat", 0) for m in st.session_state.logged_meals)
 
-st.sidebar.subheader("Macro Totals")
-st.sidebar.write(f"🥩 **Protein:** {st.session_state.total_protein}g / {TARGET_PROTEIN}g")
-st.sidebar.write(f"🍞 **Carbs:** {st.session_state.total_carbs}g / {TARGET_CARBS}g")
-st.sidebar.write(f"🥑 **Fat:** {st.session_state.total_fat}g / {TARGET_FAT}g")
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Calories", f"{total_calories} / {TARGETS['calories']} kcal")
+col2.metric("Protein", f"{total_protein} / {TARGETS['protein']}g")
+col3.metric("Carbs", f"{total_carbs} / {TARGETS['carbs']}g")
+col4.metric("Fat", f"{total_fat} / {TARGETS['fat']}g")
 
-if st.sidebar.button("Reset Daily Tracker"):
-    st.session_state.total_kcal = 0
-    st.session_state.total_protein = 0
-    st.session_state.total_carbs = 0
-    st.session_state.total_fat = 0
-    st.session_state.logged_meals = []
-    st.rerun()
+st.progress(min(total_calories / TARGETS["calories"], 1.0))
 
-# Meal Upload Section
-uploaded_file = st.file_uploader("Upload a picture of your meal", type=["jpg", "jpeg", "png"])
+st.divider()
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded Meal", use_container_width=True)
+# --- INPUT SECTION ---
+st.subheader("📸 Log a Meal")
 
-    if st.button("Estimate & Log Meal"):
-        with st.spinner("Analyzing meal ingredients and calculating macros..."):
-            prompt = """
-            Analyze this food image. Provide:
-            1. An itemized breakdown of food items with portion estimates.
-            2. Estimated total Calories (kcal), Protein (g), Carbohydrates (g), and Fat (g).
-            
-            End your response strictly with a JSON block in this format:
-            ```json
-            {
-                "meal_name": "Short summary of meal",
-                "calories": 500,
-                "protein": 30,
-                "carbs": 60,
-                "fat": 15
-            }
-            ```
-            """
-            
+input_method = st.radio("Choose input method:", ["Camera / Upload", "Text Description"], horizontal=True)
+
+meal_image = None
+text_description = ""
+
+if input_method == "Camera / Upload":
+    uploaded_file = st.file_uploader("Take a photo or upload an image of your food", type=["jpg", "jpeg", "png"])
+    if uploaded_file:
+        meal_image = Image.open(uploaded_file)
+        st.image(meal_image, caption="Uploaded Meal", use_container_width=True)
+else:
+    text_description = st.text_area("Describe what you ate (e.g., '2 scrambled eggs with 1 slice of whole wheat toast'):")
+
+# --- GEMINI ANALYSIS FUNCTION ---
+def analyze_meal(image=None, text=""):
+    prompt = """
+    Analyze this food item and provide an estimated breakdown of macros in JSON format ONLY.
+    Return exact key-value pairs without markdown formatting:
+    {
+      "meal_name": "Short descriptive name",
+      "calories": integer,
+      "protein": integer_in_grams,
+      "carbs": integer_in_grams,
+      "fat": integer_in_grams
+    }
+    """
+    
+    contents = [prompt]
+    if image:
+        contents.append(image)
+    if text:
+        contents.append(f"Description: {text}")
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=contents
+    )
+    return response.text
+
+if st.button("Analyze & Log Meal", type="primary"):
+    if not meal_image and not text_description:
+        st.warning("Please upload an image or enter a text description.")
+    else:
+        with st.spinner("Analyzing macros with Gemini AI..."):
             try:
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=[image, prompt]
-                )
+                import json
+                result_text = analyze_meal(image=meal_image, text=text_description)
                 
-                analysis_text = response.text
-                st.markdown("### Analysis Breakdown")
-                st.write(analysis_text)
+                # Clean up response string if markdown formatting is included
+                clean_json = result_text.strip().replace("```json", "").replace("```", "")
+                data = json.loads(clean_json)
 
-                # Extract JSON
-                json_match = re.search(r"```json\n(.*?)\n```", analysis_text, re.DOTALL)
-                if json_match:
-                    meal_data = json.loads(json_match.group(1))
-                    
-                    st.session_state.total_kcal += meal_data.get("calories", 0)
-                    st.session_state.total_protein += meal_data.get("protein", 0)
-                    st.session_state.total_carbs += meal_data.get("carbs", 0)
-                    st.session_state.total_fat += meal_data.get("fat", 0)
-                    st.session_state.logged_meals.append(meal_data)
-                    
-                    st.success(f"Logged {meal_data.get('meal_name')}! ({meal_data.get('calories')} kcal)")
-                    st.rerun()
+                st.session_state.logged_meals.append(data)
+                st.success(f"Logged: {data.get('meal_name', 'Meal')} ({data.get('calories', 0)} kcal)")
+                st.rerun()
 
             except Exception as e:
-                st.error(f"Error processing image: {e}")
+                st.error(f"Error analyzing meal: {e}")
 
-# Display Logged Meals
+# --- LOGGED MEALS HISTORY ---
 if st.session_state.logged_meals:
-    st.markdown("---")
-    st.subheader("📝 Today's Logged Meals")
+    st.divider()
+    st.subheader("📋 Today's Meals")
     for idx, meal in enumerate(st.session_state.logged_meals, 1):
         st.write(
-            f"**{idx}. {meal.get('meal_name')}** — "
-            f"{meal.get('calories')} kcal | P: {meal.get('protein')}g | "
-            f"C: {meal.get('carbs')}g | F: {meal.get('fat')}g"
+            f"**{idx}. {meal.get('meal_name', 'Meal')}** — "
+            f"{meal.get('calories', 0)} kcal | "
+            f"P: {meal.get('protein', 0)}g | "
+            f"C: {meal.get('carbs', 0)}g | "
+            f"F: {meal.get('fat', 0)}g"
         )
+    
+    if st.button("Reset Daily Tracker"):
+        st.session_state.logged_meals = []
+        st.rerun()
