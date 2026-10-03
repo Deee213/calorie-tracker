@@ -13,82 +13,69 @@ st.set_page_config(
     layout="centered"
 )
 
-# --- WARM CREAM AESTHETIC STYLING & CONTRAST FIXES ---
+# --- WARM CREAM AESTHETIC STYLING ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
+    /* Global Typography & Light Background */
     html, body, [class*="css"], div, span, p, label {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
         color: #1c1917 !important;
     }
 
-    /* Light Theme Warm Cream Canvas Background */
     .stApp {
         background-color: #f7f4ee !important;
     }
 
     .block-container {
         padding-top: 1rem !important;
-        padding-bottom: 5rem !important;
+        padding-bottom: 4rem !important;
         padding-left: 1rem !important;
         padding-right: 1rem !important;
         max-width: 480px !important;
     }
 
     /* Top Date Calendar Selector Pill Box */
-    .calendar-strip {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    div[data-testid="stColumn"] {
         background-color: #efeae1;
-        padding: 8px 12px;
         border-radius: 20px;
-        margin-bottom: 16px;
+        padding: 8px 0px;
+        text-align: center;
     }
 
-    .day-pill {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        width: 42px;
-        height: 52px;
-        border-radius: 14px;
-        font-size: 0.75rem;
+    .day-pill-name {
+        font-size: 0.7rem;
         font-weight: 600;
-        background-color: transparent;
-    }
-
-    .day-pill .day-name, .day-pill .day-num {
         color: #78716c !important;
     }
 
-    .day-pill.active {
+    .day-pill-num {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #1c1917 !important;
+    }
+
+    /* Active Day Pill (Orange) */
+    .day-pill-active {
         background-color: #f97316 !important;
+        border-radius: 16px;
+        padding: 4px 0px;
         box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3);
     }
 
-    .day-pill.active .day-name, .day-pill.active .day-num {
+    .day-pill-active .day-pill-name, 
+    .day-pill-active .day-pill-num {
         color: #ffffff !important;
-        font-weight: 700 !important;
     }
 
-    .day-name {
-        font-size: 0.68rem;
-        margin-bottom: 2px;
-    }
-
-    .day-num {
-        font-size: 0.9rem;
-    }
-
-    /* Card Wrapper */
+    /* Main Summary Card Wrapper */
     .warm-card {
         background-color: #ffffff;
         border-radius: 24px;
         padding: 20px;
         box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+        margin-top: 10px;
         margin-bottom: 16px;
         border: 1px solid #f0ece1;
     }
@@ -111,7 +98,7 @@ st.markdown("""
         color: #78716c !important;
     }
 
-    /* Donut & Macro Stats Layout */
+    /* Donut Ring & Macro Progress Layout */
     .donut-container {
         display: flex;
         align-items: center;
@@ -121,8 +108,8 @@ st.markdown("""
 
     .donut-circle {
         position: relative;
-        width: 140px;
-        height: 140px;
+        width: 130px;
+        height: 130px;
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -132,8 +119,8 @@ st.markdown("""
 
     .donut-inner {
         position: absolute;
-        width: 104px;
-        height: 104px;
+        width: 96px;
+        height: 96px;
         background: #ffffff;
         border-radius: 50%;
         display: flex;
@@ -143,7 +130,7 @@ st.markdown("""
     }
 
     .donut-val {
-        font-size: 1.4rem;
+        font-size: 1.3rem;
         font-weight: 800;
         color: #1c1917 !important;
         line-height: 1;
@@ -167,7 +154,6 @@ st.markdown("""
     .macro-bar-header {
         display: flex;
         align-items: center;
-        justify-content: flex-start;
         gap: 6px;
         font-size: 0.78rem;
         font-weight: 700;
@@ -198,7 +184,7 @@ st.markdown("""
         margin-top: 2px;
     }
 
-    /* Motivation Pills */
+    /* Motivation Pill */
     .motivation-pill {
         display: flex;
         align-items: center;
@@ -212,23 +198,18 @@ st.markdown("""
         margin-top: 14px;
     }
 
-    /* STREAMLIT FORM & TAB CONTRAST OVERRIDES */
+    /* Navigation Tabs Contrast Overrides */
     button[data-baseweb="tab"] p {
         color: #44403c !important;
         font-weight: 700 !important;
+        font-size: 0.9rem !important;
     }
 
     button[data-baseweb="tab"][aria-selected="true"] p {
         color: #f97316 !important;
     }
 
-    /* Fix invisible radio labels */
-    div[data-aria-label="Input Method"] label p, div[role="radiogroup"] label p {
-        color: #1c1917 !important;
-        font-weight: 600 !important;
-    }
-
-    /* Textarea & Inputs visibility fix */
+    /* Form Visibility Overrides */
     textarea, input[type="text"] {
         background-color: #ffffff !important;
         color: #1c1917 !important;
@@ -240,7 +221,6 @@ st.markdown("""
         color: #a8a29e !important;
     }
 
-    /* Hide standard Streamlit header */
     header[data-testid="stHeader"] {
         background-color: transparent !important;
     }
@@ -304,7 +284,7 @@ total_fat = sum(m.get("fat", 0) for m in today_meals)
 
 remaining_calories = max(0, TARGETS["calories"] - total_calories)
 
-# Donut Segment Percentage Calculations
+# Donut Segment Calculations
 fat_pct = min(100, int((total_fat / TARGETS["fat"]) * 100)) if TARGETS["fat"] else 0
 prot_pct = min(100, int((total_protein / TARGETS["protein"]) * 100)) if TARGETS["protein"] else 0
 carb_pct = min(100, int((total_carbs / TARGETS["carbs"]) * 100)) if TARGETS["carbs"] else 0
@@ -315,21 +295,27 @@ carb_angle = min(360, prot_angle + (carb_pct * 3.6))
 
 conic_bg = f"conic-gradient(#3b82f6 0deg {fat_angle}deg, #eab308 {fat_angle}deg {prot_angle}deg, #22c55e {prot_angle}deg {carb_angle}deg, #f3f0e6 {carb_angle}deg 360deg)"
 
-# --- TOP HEADER & DATE CALENDAR STRIP ---
-st.markdown("### 🥗 Daily Macro Tracker")
-
-date_pills_html = '<div class="calendar-strip">'
-for i in range(-3, 4):
+# --- TOP DATE CALENDAR STRIP (NATIVE STREAMLIT COLUMNS) ---
+cols = st.columns(7)
+for idx, i in enumerate(range(-3, 4)):
     dt = today_dt + timedelta(days=i)
-    is_active = "active" if i == 0 else ""
-    date_pills_html += f"""
-        <div class="day-pill {is_active}">
-            <div class="day-name">{dt.strftime('%a')}</div>
-            <div class="day-num">{dt.strftime('%d')}</div>
-        </div>
-    """
-date_pills_html += '</div>'
-st.markdown(date_pills_html, unsafe_allow_html=True)
+    is_today = (i == 0)
+    
+    with cols[idx]:
+        if is_today:
+            st.markdown(f"""
+                <div class="day-pill-active">
+                    <div class="day-pill-name">{dt.strftime('%a')}</div>
+                    <div class="day-pill-num">{dt.strftime('%d')}</div>
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown(f"""
+                <div>
+                    <div class="day-pill-name">{dt.strftime('%a')}</div>
+                    <div class="day-pill-num">{dt.strftime('%d')}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
 # --- MAIN NUTRITION SUMMARY CARD ---
 st.markdown(f"""
@@ -374,7 +360,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # --- NAVIGATION TABS ---
-nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📷 Log Meal", "📋 Today's Meals", "📅 History"])
+nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📸 Log Meal", "📋 Today's Meals", "📅 History"])
 
 # --- TAB 1: LOG MEAL ---
 with nav_tab1:
@@ -467,15 +453,29 @@ with nav_tab2:
                         save_history(st.session_state.history)
                         st.rerun()
 
-# --- TAB 3: DAILY HISTORY ---
+# --- TAB 3: DAILY HISTORY (CLEAN CARD DISPLAY) ---
 with nav_tab3:
     if not st.session_state.history:
-        st.info("No historical data available.")
+        st.info("No historical logs available.")
     else:
         for date_key in sorted(st.session_state.history.keys(), reverse=True):
             day_meals = st.session_state.history[date_key]
             day_calories = sum(m.get("calories", 0) for m in day_meals)
             
-            with st.expander(f"📆 **{date_key}** — **{day_calories} kcal**"):
-                for m in day_meals:
-                    st.write(f"• **{m.get('meal_name', 'Meal')}**: {m.get('calories', 0)} kcal (Fat: {m.get('fat', 0)}g | Prot: {m.get('protein', 0)}g | Carbs: {m.get('carbs', 0)}g)")
+            # Format date to display day name (e.g., "Saturday, Oct 03, 2026")
+            try:
+                formatted_date = datetime.strptime(date_key, "%Y-%m-%d").strftime("%A, %b %d, %Y")
+            except Exception:
+                formatted_date = date_key
+
+            with st.container(border=True):
+                st.markdown(f"🗓️ **{formatted_date}** — **{day_calories:,} kcal**")
+                
+                if not day_meals:
+                    st.caption("No items recorded for this date.")
+                else:
+                    for m in day_meals:
+                        st.markdown(
+                            f"• **{m.get('meal_name', 'Meal')}**: {m.get('calories', 0)} kcal "
+                            f"(🌀 {m.get('fat', 0)}g Fat | 🌽 {m.get('protein', 0)}g Prot | 🌾 {m.get('carbs', 0)}g Carbs)"
+                        )
