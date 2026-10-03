@@ -184,27 +184,6 @@ st.markdown("""
     header[data-testid="stHeader"] {
         background-color: transparent !important;
     }
-    
-    /* Custom Sidebar Expander Overlap Fix */
-    [data-testid="stSidebar"] details {
-        background-color: #ffffff;
-        border: 1px solid #f0ece1;
-        border-radius: 12px;
-        padding: 6px 12px;
-        margin-bottom: 12px;
-    }
-    [data-testid="stSidebar"] details summary {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        flex-direction: row-reverse !important;
-    }
-    [data-testid="stSidebar"] summary p {
-        font-size: 0.85rem !important;
-        font-weight: 700 !important;
-        color: #1c1917 !important;
-        margin: 0 !important;
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -241,6 +220,9 @@ def save_all_users(users_data):
 if "user" not in st.session_state:
     st.session_state.user = None
 
+if "show_profile" not in st.session_state:
+    st.session_state.show_profile = False
+
 all_users = load_all_users()
 
 # --- AUTHENTICATION SCREEN ---
@@ -252,7 +234,7 @@ if not st.session_state.user:
     with tab_login:
         with st.form("login_form"):
             username_input = st.text_input("Username")
-            password_input = st.text_input("Password", type="password", help="Click the eye icon on the right to toggle password visibility")
+            password_input = st.text_input("Password", type="password")
             submit_login = st.form_submit_button("Login", use_container_width=True)
             
             if submit_login:
@@ -266,7 +248,7 @@ if not st.session_state.user:
     with tab_register:
         with st.form("register_form"):
             new_user = st.text_input("Choose Username")
-            new_pass = st.text_input("Choose Password", type="password", help="Click the eye icon on the right to toggle password visibility")
+            new_pass = st.text_input("Choose Password", type="password")
             submit_reg = st.form_submit_button("Create Account", use_container_width=True)
             
             if submit_reg:
@@ -308,57 +290,63 @@ today_str = datetime.now().strftime("%Y-%m-%d")
 if today_str not in history:
     history[today_str] = []
 
-# --- SIDEBAR: COMPRESSED PROFILE & LOGOUT ---
+# --- SIDEBAR: CLEAN TOGGLE PROFILE & LOGOUT ---
 with st.sidebar:
     st.markdown(f"### 👤 {current_user}")
     
-    with st.expander("⚙️ Profile & Body Metrics", expanded=False):
-        st.caption("Update your body metrics below. Targets and monthly weight loss estimates will adjust automatically.")
-        
-        with st.form("profile_form"):
-            age = st.number_input("Age", min_value=10, max_value=100, value=int(p["age"]))
-            gender = st.selectbox("Gender", ["Male", "Female"], index=0 if p["gender"]=="Male" else 1)
-            height = st.number_input("Height (cm)", min_value=100, max_value=250, value=int(p["height"]))
-            weight = st.number_input("Current Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["weight"]))
-            target_weight = st.number_input("Target Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["target_weight"]))
+    if st.button("⚙️ Profile & Body Metrics", use_container_width=True):
+        st.session_state.show_profile = not st.session_state.show_profile
+
+    if st.session_state.show_profile:
+        with st.container(border=True):
+            st.caption("Update body metrics. Targets and estimates adjust automatically.")
             
-            activity_options = [
-                "Sedentary (little or no exercise)",
-                "Light (1-3 days/week)",
-                "Moderate (3-5 days/week)",
-                "Active (6-7 days/week)"
-            ]
-            current_act_index = activity_options.index(p["activity"]) if p["activity"] in activity_options else 2
-            activity = st.selectbox("Activity Level", activity_options, index=current_act_index)
+            with st.form("profile_form"):
+                age = st.number_input("Age", min_value=10, max_value=100, value=int(p["age"]))
+                gender = st.selectbox("Gender", ["Male", "Female"], index=0 if p["gender"]=="Male" else 1)
+                height = st.number_input("Height (cm)", min_value=100, max_value=250, value=int(p["height"]))
+                weight = st.number_input("Current Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["weight"]))
+                target_weight = st.number_input("Target Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["target_weight"]))
+                
+                activity_options = [
+                    "Sedentary (little or no exercise)",
+                    "Light (1-3 days/week)",
+                    "Moderate (3-5 days/week)",
+                    "Active (6-7 days/week)"
+                ]
+                current_act_index = activity_options.index(p["activity"]) if p["activity"] in activity_options else 2
+                activity = st.selectbox("Activity Level", activity_options, index=current_act_index)
 
-            st.markdown("---")
-            st.markdown("##### Weight Loss Pace")
-            pace_options = [
-                "Normal (~2 kg / month)", 
-                "Aggressive (~3.5 kg / month)", 
-                "⚡ Rush / Fast (~4.5+ kg / month)"
-            ]
-            current_pace_index = pace_options.index(p["pace"]) if p["pace"] in pace_options else 0
-            pace = st.selectbox("Select Pace", pace_options, index=current_pace_index, label_visibility="collapsed")
+                st.markdown("---")
+                st.markdown("##### Weight Loss Pace")
+                pace_options = [
+                    "Normal (~2 kg / month)", 
+                    "Aggressive (~3.5 kg / month)", 
+                    "⚡ Rush / Fast (~4.5+ kg / month)"
+                ]
+                current_pace_index = pace_options.index(p["pace"]) if p["pace"] in pace_options else 0
+                pace = st.selectbox("Select Pace", pace_options, index=current_pace_index, label_visibility="collapsed")
 
-            submitted = st.form_submit_button("💾 Save Profile", use_container_width=True)
-            if submitted:
-                all_users[current_user]["profile"] = {
-                    "age": age,
-                    "gender": gender,
-                    "height": height,
-                    "weight": weight,
-                    "target_weight": target_weight,
-                    "activity": activity,
-                    "pace": pace
-                }
-                save_all_users(all_users)
-                st.success("Profile updated successfully!")
-                st.rerun()
+                submitted = st.form_submit_button("💾 Save Profile", use_container_width=True)
+                if submitted:
+                    all_users[current_user]["profile"] = {
+                        "age": age,
+                        "gender": gender,
+                        "height": height,
+                        "weight": weight,
+                        "target_weight": target_weight,
+                        "activity": activity,
+                        "pace": pace
+                    }
+                    save_all_users(all_users)
+                    st.session_state.show_profile = False
+                    st.success("Profile updated successfully!")
+                    st.rerun()
 
     st.markdown("---")
     if st.button("🚪 Logout", use_container_width=True):
         st.session_state.user = None
+        st.session_state.show_profile = False
         st.rerun()
 
 # --- THEME-MATCHED ARROW INDICATOR HEADER ---
@@ -507,15 +495,17 @@ with nav_tab1:
         if text:
             contents.append(f"Description: {text}")
 
-        models_to_try = ["gemini-2.5-flash", "gemini-2.0-flash"]
+        models_to_try = ["gemini-3.8-flash", "gemini-2.8-flash", "gemini-2.5-flash"]
+        last_error = None
         for model_name in models_to_try:
             try:
                 response = client.models.generate_content(model=model_name, contents=contents)
                 return response.text
-            except Exception:
+            except Exception as e:
+                last_error = str(e)
                 time.sleep(1)
                 continue
-        raise Exception("API server busy. Please try logging again.")
+        raise Exception(f"API Error Details: {last_error or 'Unknown error'}")
 
     if st.button("✨ Analyze & Log Meal", type="primary", use_container_width=True):
         if not meal_image and not text_description:
