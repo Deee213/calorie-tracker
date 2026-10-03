@@ -19,7 +19,6 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-    /* Force global light theme override to prevent dark mode invisibility */
     html, body, [class*="css"], div, span, p, label, h1, h2, h3, h4, h5, h6 {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
         color: #1c1917 !important;
@@ -171,7 +170,6 @@ st.markdown("""
         color: #f97316 !important;
     }
 
-    /* Input styling fixes for clean contrast */
     input, textarea, select {
         background-color: #ffffff !important;
         color: #1c1917 !important;
@@ -289,8 +287,53 @@ today_str = datetime.now().strftime("%Y-%m-%d")
 if today_str not in history:
     history[today_str] = []
 
+# --- SIDEBAR: PROFILE & LOGOUT ---
 with st.sidebar:
-    st.write(f"Logged in as: **{current_user}**")
+    st.markdown(f"### 👤 {current_user}")
+    st.caption("Update your body metrics below. Targets and monthly weight loss estimates will adjust automatically.")
+    
+    with st.form("profile_form"):
+        age = st.number_input("Age", min_value=10, max_value=100, value=int(p["age"]))
+        gender = st.selectbox("Gender", ["Male", "Female"], index=0 if p["gender"]=="Male" else 1)
+        height = st.number_input("Height (cm)", min_value=100, max_value=250, value=int(p["height"]))
+        weight = st.number_input("Current Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["weight"]))
+        target_weight = st.number_input("Target Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["target_weight"]))
+        
+        activity_options = [
+            "Sedentary (little or no exercise)",
+            "Light (1-3 days/week)",
+            "Moderate (3-5 days/week)",
+            "Active (6-7 days/week)"
+        ]
+        current_act_index = activity_options.index(p["activity"]) if p["activity"] in activity_options else 2
+        activity = st.selectbox("Activity Level", activity_options, index=current_act_index)
+
+        st.markdown("---")
+        st.markdown("##### Weight Loss Pace")
+        pace_options = [
+            "Normal (~2 kg / month)", 
+            "Aggressive (~3.5 kg / month)", 
+            "⚡ Rush / Fast (~4.5+ kg / month)"
+        ]
+        current_pace_index = pace_options.index(p["pace"]) if p["pace"] in pace_options else 0
+        pace = st.selectbox("Select Pace", pace_options, index=current_pace_index, label_visibility="collapsed")
+
+        submitted = st.form_submit_button("💾 Save Profile", use_container_width=True)
+        if submitted:
+            all_users[current_user]["profile"] = {
+                "age": age,
+                "gender": gender,
+                "height": height,
+                "weight": weight,
+                "target_weight": target_weight,
+                "activity": activity,
+                "pace": pace
+            }
+            save_all_users(all_users)
+            st.success("Profile updated successfully!")
+            st.rerun()
+
+    st.markdown("---")
     if st.button("🚪 Logout", use_container_width=True):
         st.session_state.user = None
         st.rerun()
@@ -389,57 +432,10 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-# --- NAVIGATION TABS ---
-nav_tab1, nav_tab2, nav_tab3, nav_tab4 = st.tabs(["👤 Profile", "📸 Log Meal", "📋 Today", "📅 History"])
+# --- NAVIGATION TABS (WITHOUT PROFILE TAB) ---
+nav_tab1, nav_tab2, nav_tab3 = st.tabs(["📸 Log Meal", "📋 Today", "📅 History"])
 
 with nav_tab1:
-    st.markdown("### Your Personal Details")
-    st.caption("Update your body metrics below. Targets and monthly weight loss estimates will adjust automatically.")
-    
-    with st.form("profile_form"):
-        col1, col2 = st.columns(2)
-        with col1:
-            age = st.number_input("Age", min_value=10, max_value=100, value=int(p["age"]))
-            height = st.number_input("Height (cm)", min_value=100, max_value=250, value=int(p["height"]))
-            weight = st.number_input("Current Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["weight"]))
-        with col2:
-            gender = st.selectbox("Gender", ["Male", "Female"], index=0 if p["gender"]=="Male" else 1)
-            target_weight = st.number_input("Target Weight (kg)", min_value=30.0, max_value=250.0, value=float(p["target_weight"]))
-            activity_options = [
-                "Sedentary (little or no exercise)",
-                "Light (1-3 days/week)",
-                "Moderate (3-5 days/week)",
-                "Active (6-7 days/week)"
-            ]
-            current_act_index = activity_options.index(p["activity"]) if p["activity"] in activity_options else 2
-            activity = st.selectbox("Activity Level", activity_options, index=current_act_index)
-
-        st.markdown("---")
-        st.markdown("### Weight Loss Speed & Rush Mode")
-        pace_options = [
-            "Normal (~2 kg / month)", 
-            "Aggressive (~3.5 kg / month)", 
-            "⚡ Rush / Fast (~4.5+ kg / month)"
-        ]
-        current_pace_index = pace_options.index(p["pace"]) if p["pace"] in pace_options else 0
-        pace = st.selectbox("Select Weight Loss Pace", pace_options, index=current_pace_index)
-
-        submitted = st.form_submit_button("💾 Save Profile & Recalculate", use_container_width=True)
-        if submitted:
-            all_users[current_user]["profile"] = {
-                "age": age,
-                "gender": gender,
-                "height": height,
-                "weight": weight,
-                "target_weight": target_weight,
-                "activity": activity,
-                "pace": pace
-            }
-            save_all_users(all_users)
-            st.success("Profile updated successfully!")
-            st.rerun()
-
-with nav_tab2:
     method = st.radio("Input Method", ["Text Description", "Camera / Upload"], horizontal=True, label_visibility="collapsed")
     
     meal_image = None
@@ -503,7 +499,7 @@ with nav_tab2:
                 except Exception as e:
                     st.error(f"Error: {e}")
 
-with nav_tab3:
+with nav_tab2:
     if not today_meals:
         st.info("No meals logged today yet.")
     else:
@@ -525,7 +521,7 @@ with nav_tab3:
                         save_all_users(all_users)
                         st.rerun()
 
-with nav_tab4:
+with nav_tab3:
     if not history:
         st.info("No historical logs available.")
     else:
