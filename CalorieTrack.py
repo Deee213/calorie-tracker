@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import os
 import time
@@ -33,67 +33,6 @@ st.markdown("""
         padding-left: 0.75rem !important;
         padding-right: 0.75rem !important;
         max-width: 480px !important;
-    }
-
-    /* HORIZONTAL OVAL CALENDAR STRIP (7 DAYS) */
-    .calendar-strip-container {
-        display: flex !important;
-        flex-direction: row !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        background-color: transparent !important;
-        gap: 6px;
-        margin-bottom: 16px;
-        width: 100%;
-        box-sizing: border-box;
-    }
-
-    .day-pill-item {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center !important;
-        background-color: #efeae1;
-        border-radius: 30px;
-        padding: 8px 2px;
-        height: 64px;
-        box-sizing: border-box;
-    }
-
-    .day-pill-name {
-        font-size: 0.65rem;
-        font-weight: 600;
-        color: #78716c !important;
-        text-align: center !important;
-        line-height: 1.1;
-    }
-
-    .day-pill-dot {
-        font-size: 0.5rem;
-        color: #a8a29e !important;
-        line-height: 1;
-        margin: 2px 0;
-    }
-
-    .day-pill-num {
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: #1c1917 !important;
-        text-align: center !important;
-        line-height: 1.1;
-    }
-
-    .day-pill-item.active {
-        background-color: #f97316 !important;
-        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.35);
-    }
-
-    .day-pill-item.active .day-pill-name, 
-    .day-pill-item.active .day-pill-dot,
-    .day-pill-item.active .day-pill-num {
-        color: #ffffff !important;
     }
 
     /* Main Summary Card Wrapper */
@@ -337,22 +276,6 @@ prot_angle = fat_angle + (prot_pct * 3.6)
 carb_angle = min(360, prot_angle + (carb_pct * 3.6))
 
 conic_bg = f"conic-gradient(#3b82f6 0deg {fat_angle}deg, #eab308 {fat_angle}deg {prot_angle}deg, #22c55e {prot_angle}deg {carb_angle}deg, #f3f0e6 {carb_angle}deg 360deg)"
-
-# --- HORIZONTAL OVAL CALENDAR STRIP (7 DAYS) ---
-strip_html = '<div class="calendar-strip-container">'
-for i in range(-3, 4):
-    dt = today_dt + timedelta(days=i)
-    active_class = "active" if i == 0 else ""
-    strip_html += f"""
-        <div class="day-pill-item {active_class}">
-            <div class="day-pill-name">{dt.strftime('%a')}</div>
-            <div class="day-pill-dot">•</div>
-            <div class="day-pill-num">{dt.strftime('%d')}</div>
-        </div>
-    """
-strip_html += '</div>'
-
-st.markdown(strip_html, unsafe_allow_html=True)
 
 # --- MAIN NUTRITION SUMMARY CARD ---
 st.markdown(f"""
